@@ -301,7 +301,7 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
       <h3 style="margin-top:4px">ابزارهای آرامش</h3>
       <div class="tools">
         <button class="tool" onclick="go('breath')"><div class="ti" style="--c:var(--teal)" data-ic="wind"></div><div><h3>تنفس</h3><p class="muted small">چند دقیقه آرام شدن</p></div></button>
-        <button class="tool" onclick="go('sounds')"><div class="ti" style="--c:var(--violet)" data-ic="wave"></div><div><h3>صدای آرامش</h3><p class="muted small">باران، دریا، شب</p></div></button>
+        <button class="tool" onclick="go('sounds')"><div class="ti" style="--c:var(--violet)" data-ic="wave"></div><div><h3>صدای آرامش</h3><p class="muted small">باران، دریا، موسیقی</p></div></button>
         <button class="tool" onclick="go('journal')"><div class="ti" style="--c:var(--amber)" data-ic="book"></div><div><h3>دفترچه</h3><p class="muted small">فقط برای خودت</p></div></button>
         <button class="tool" onclick="openSOS()"><div class="ti" style="--c:var(--rose)" data-ic="lifebuoy"></div><div><h3>کمک فوری</h3><p class="muted small">اورژانس و مشاور</p></div></button>
       </div>
@@ -427,7 +427,8 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
       <h2>دفترچه</h2>
       <p class="muted small">آنچه اینجا می‌نویسی فقط روی همین گوشی می‌ماند.</p>
       <textarea id="jtext" rows="6" placeholder="امروز…"></textarea>
-      <button class="btn" onclick="saveJournal()">ذخیره</button>
+      <button class="btn" id="jSave" onclick="saveJournal()">ذخیره</button>
+      <button class="btn ghost" id="jCancel" onclick="cancelEdit()" style="display:none">انصراف از ویرایش</button>
       <div id="jlist" style="display:flex;flex-direction:column;gap:10px"></div>
     </section>
 
@@ -518,7 +519,11 @@ const I={
   lifebuoy:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',
   send:'<path d="M20 4L9 15M20 4l-6 17-4-8-8-4z"/>',
   sparkle:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/>',
+  note:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  bowl:'<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M9 21h6M12 7c0-2 1-3 2-4"/>',
   check:'<path d="M5 12l5 5L20 7"/>',
+  pen:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
   pin:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   headset:'<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
   chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>',
@@ -1007,45 +1012,154 @@ function startBreath(){
 }
 function stopBreath(){ if(!bRun) return; bRun=false; clearTimeout(bT); clearInterval(bTick); $('#bbtn').textContent='شروع'; $('#bphase').textContent='آماده'; $('#bcount').textContent='۴'; $('#bball').style.transitionDuration='1s'; $('#bball').style.transform='scale(.55)'; }
 
-/* ---------- ambient sounds (generated with Web Audio) ---------- */
-const SOUNDS=[['rain','باران','wave','var(--teal)'],['sea','دریا','wave','var(--violet)'],['night','شب آرام','sparkle','var(--amber)'],['heart','ضربان آرام','heart','var(--rose)']];
-let sCtx=null, sGain=null, sNodes=[], sCur=null, sBeat=0;
+/* ---------- calming sounds (generated with Web Audio) ---------- */
+const SOUNDS=[
+  ['rain','باران نرم','wave','var(--teal)'],['sea','موج دریا','wave','var(--violet)'],
+  ['wind','نسیم','wind','var(--teal)'],['pad','موسیقی آرام','note','var(--amber)'],
+  ['piano','پیانوی آرام','note','var(--rose)'],['bowl','کاسهٔ تبتی','bowl','var(--amber)']
+];
+let sCtx=null, sOut=null, sWet=null, sCur=null, sVoice=null;
+// One shared chain: every sound feeds a dry path and a soft reverb, then a gentle compressor.
+function audio(){
+  if(sCtx) return sCtx;
+  sCtx=new (window.AudioContext||window.webkitAudioContext)();
+  sOut=sCtx.createGain(); sOut.gain.value=$('#vol').value/100;
+  const comp=sCtx.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3;
+  const tone=sCtx.createBiquadFilter(); tone.type='lowpass'; tone.frequency.value=7000;
+  sOut.connect(tone).connect(comp).connect(sCtx.destination);
+  const rev=sCtx.createConvolver(), len=sCtx.sampleRate*3.5, ir=sCtx.createBuffer(2,len,sCtx.sampleRate);
+  for(let ch=0;ch<2;ch++){ const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2); }
+  rev.buffer=ir; sWet=sCtx.createGain(); sWet.gain.value=.55; sWet.connect(rev).connect(sOut);
+  return sCtx;
+}
+function noise(type,sec=6){
+  const ctx=audio(), b=ctx.createBuffer(2,ctx.sampleRate*sec,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){
+    const d=b.getChannelData(ch); let b0=0,b1=0,b2=0,last=0;
+    for(let i=0;i<d.length;i++){
+      const w=Math.random()*2-1;
+      if(type==='brown'){ last=(last+.02*w)/1.02; d[i]=last*3.2; }
+      else { b0=.99765*b0+w*.099046; b1=.963*b1+w*.2965164; b2=.57*b2+w*1.0526913; d[i]=(b0+b1+b2+w*.1848)*.11; }   // pink
+    }
+  }
+  return b;
+}
+function loopSrc(buf){ const s=audio().createBufferSource(); s.buffer=buf; s.loop=true; return s; }
+function lfo(rate,depth,target,base){
+  const ctx=audio(), o=ctx.createOscillator(), g=ctx.createGain();
+  o.frequency.value=rate; g.gain.value=depth; target.value=base; o.connect(g).connect(target); o.start(); return o;
+}
+// A soft tone that rises and falls: used by the pad, piano and bowl.
+function tone(freq,{at=0,attack=.01,hold=0,decay=2,gain=.1,type='sine',wet=.6,dest}={}){
+  const ctx=audio(), t=ctx.currentTime+at, o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+attack); g.gain.setValueAtTime(gain,t+attack+hold);
+  g.gain.exponentialRampToValueAtTime(.0001,t+attack+hold+decay);
+  o.connect(g); g.connect(dest); const w=ctx.createGain(); w.gain.value=wet; g.connect(w).connect(sWet);
+  o.start(t); o.stop(t+attack+hold+decay+.1);
+}
+const hz=m=>440*Math.pow(2,(m-69)/12);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+// Measured so every sound plays at about the same loudness.
+const LEVEL={rain:1,sea:.85,wind:3.5,pad:1.6,piano:3,bowl:4};
+function startVoice(k){
+  const ctx=audio(), out=ctx.createGain(), timers=[], nodes=[];
+  out.gain.setValueAtTime(0,ctx.currentTime); out.gain.linearRampToValueAtTime(LEVEL[k],ctx.currentTime+3);
+  out.connect(sOut);
+  const every=(fn,ms)=>{ const run=()=>{ fn(); timers.push(setTimeout(run,typeof ms==='function'?ms():ms)); }; run(); };
+  if(k==='rain'){
+    const s=loopSrc(noise('pink')), lp=ctx.createBiquadFilter(), hp=ctx.createBiquadFilter(), g=ctx.createGain();
+    lp.type='lowpass'; lp.frequency.value=2200; hp.type='highpass'; hp.frequency.value=300; g.gain.value=.9;
+    s.connect(hp).connect(lp).connect(g).connect(out); s.start(); nodes.push(s);
+    const w=ctx.createGain(); w.gain.value=.25; g.connect(w).connect(sWet);
+    // Distant soft drops.
+    const drop=noise('pink',1);
+    every(()=>{ const d=ctx.createBufferSource(), f=ctx.createBiquadFilter(), e=ctx.createGain(), t=ctx.currentTime;
+      d.buffer=drop; f.type='bandpass'; f.frequency.value=1500+Math.random()*2500; f.Q.value=6;
+      e.gain.setValueAtTime(.0001,t); e.gain.linearRampToValueAtTime(.25+Math.random()*.25,t+.004); e.gain.exponentialRampToValueAtTime(.0001,t+.06);
+      d.connect(f).connect(e); e.connect(out); const ww=ctx.createGain(); ww.gain.value=.8; e.connect(ww).connect(sWet);
+      d.start(t,Math.random()*.8,.08); }, ()=>40+Math.random()*160);
+  }
+  if(k==='sea'){
+    [[.075,0],[.052,1.7]].forEach(([rate,phase],i)=>{
+      const s=loopSrc(noise('brown')), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+      lp.type='lowpass'; s.connect(lp).connect(g).connect(out);
+      const w=ctx.createGain(); w.gain.value=.4; g.connect(w).connect(sWet);
+      s.start(0,phase); nodes.push(s,lfo(rate,450,lp.frequency,650),lfo(rate,.45,g.gain,.5-i*.15));
+    });
+  }
+  if(k==='wind'){
+    const s=loopSrc(noise('pink')), bp=ctx.createBiquadFilter(), g=ctx.createGain();
+    bp.type='bandpass'; bp.Q.value=1.4; s.connect(bp).connect(g).connect(out);
+    const w=ctx.createGain(); w.gain.value=.5; g.connect(w).connect(sWet);
+    s.start(); nodes.push(s,lfo(.045,350,bp.frequency,650),lfo(.031,.35,g.gain,.55));
+  }
+  if(k==='pad'){
+    // Am9 – Fmaj7 – Cadd9 – G6, eight seconds each.
+    const CH=[[45,57,60,64,71],[41,57,60,64,69],[48,55,62,64,67],[43,55,59,62,64]];
+    let n=0;
+    every(()=>{ CH[n++%4].forEach((m,i)=>{ [0,6].forEach(c=>tone(hz(m)*Math.pow(2,c/1200),{attack:3,hold:4,decay:4.5,gain:i?.035:.05,type:'triangle',wet:.9,dest:out})); }); },8000);
+  }
+  if(k==='piano'){
+    const SC=[57,60,62,64,67,69,72,74,76,79];   // A minor pentatonic
+    let last=4;
+    every(()=>{ last=Math.max(0,Math.min(SC.length-1,last+pick([-2,-1,1,2]))); const f=hz(SC[last]);
+      tone(f,{decay:3.2,gain:.12,wet:.8,dest:out}); tone(f*2,{decay:1.2,gain:.025,wet:.8,dest:out});
+      if(Math.random()<.25) tone(hz(SC[Math.max(0,last-2)]-12),{at:.02,decay:4,gain:.08,wet:.8,dest:out});
+    },()=>900+Math.random()*1800);
+  }
+  if(k==='bowl'){
+    every(()=>{ const f=pick([196,220,174.6]);
+      [[1,.12,10],[2.71,.05,6],[5.2,.02,3.5],[8.4,.008,2]].forEach(([r,g,d])=>{ [1,1.004].forEach(det=>tone(f*r*det,{attack:.02,decay:d,gain:g,wet:.7,dest:out})); });
+    },9000);
+  }
+  return {stop(){ timers.forEach(clearTimeout); const t=ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value,t); out.gain.linearRampToValueAtTime(0,t+1.5);
+    setTimeout(()=>{ nodes.forEach(n=>{ try{ n.stop(); }catch(e){} }); out.disconnect(); },1700); }};
+}
+function stopSound(){ if(sVoice){ sVoice.stop(); sVoice=null; } sCur=null; }
+function playSound(k){
+  if(sCur===k){ stopSound(); renderSounds(); return; }
+  stopSound(); audio().resume();
+  sVoice=startVoice(k); sCur=k; renderSounds();
+}
 function renderSounds(){
   $('#soundList').innerHTML=SOUNDS.map(([k,n,i,c])=>`<button class="tool" data-k="${k}" style="${sCur===k?'border-color:'+c:''}"><div class="ti" style="--c:${c}">${ic(i)}</div><div><h3>${n}</h3><p class="muted small">${sCur===k?'در حال پخش · لمس برای توقف':'لمس برای پخش'}</p></div></button>`).join('');
   $('#soundList').querySelectorAll('.tool').forEach(b=>b.onclick=()=>playSound(b.dataset.k));
 }
-function noiseBuffer(ctx,type){
-  const b=ctx.createBuffer(1,ctx.sampleRate*4,ctx.sampleRate), d=b.getChannelData(0); let last=0;
-  for(let i=0;i<d.length;i++){ const w=Math.random()*2-1; if(type==='brown'){ last=(last+.02*w)/1.02; d[i]=last*3.5; } else d[i]=w*.4; }
-  return b;
-}
-function stopSound(){ clearTimeout(sBeat); sNodes.forEach(n=>{ try{ n.stop?n.stop():n.disconnect(); }catch(e){} }); sNodes=[]; sCur=null; }
-function playSound(k){
-  if(sCur===k){ stopSound(); renderSounds(); return; }
-  stopSound();
-  if(!sCtx){ sCtx=new (window.AudioContext||window.webkitAudioContext)(); sGain=sCtx.createGain(); sGain.gain.value=$('#vol').value/100; sGain.connect(sCtx.destination); }
-  sCtx.resume();
-  const src=sCtx.createBufferSource(); src.loop=true;
-  const f=sCtx.createBiquadFilter(), g=sCtx.createGain();
-  if(k==='rain'){ src.buffer=noiseBuffer(sCtx,'white'); f.type='bandpass'; f.frequency.value=1800; f.Q.value=.6; g.gain.value=.7; }
-  if(k==='sea'||k==='night'){ src.buffer=noiseBuffer(sCtx,'brown'); f.type='lowpass'; f.frequency.value=k==='sea'?700:350; g.gain.value=.8;
-    const lfo=sCtx.createOscillator(), lg=sCtx.createGain(); lfo.frequency.value=k==='sea'?.11:.05; lg.gain.value=.45; lfo.connect(lg).connect(g.gain); lfo.start(); sNodes.push(lfo); }
-  if(k==='heart'){
-    src.buffer=noiseBuffer(sCtx,'brown'); f.type='lowpass'; f.frequency.value=90; g.gain.value=0;
-    const beat=()=>{ const t=sCtx.currentTime; [0,.28].forEach(o=>{ g.gain.setValueAtTime(0,t+o); g.gain.linearRampToValueAtTime(2.5,t+o+.04); g.gain.exponentialRampToValueAtTime(.001,t+o+.22); }); sBeat=setTimeout(beat,1100); };
-    beat();
-  }
-  src.connect(f).connect(g).connect(sGain); src.start(); sNodes.push(src,f,g); sCur=k; renderSounds();
-}
-function setVol(v){ if(sGain) sGain.gain.value=v/100; }
+function setVol(v){ if(sOut) sOut.gain.setTargetAtTime(v/100,sCtx.currentTime,.1); }
 
 /* ---------- journal & after-chat ---------- */
+let jEdit=-1;
 function renderJournal(){
   const list=store.get('journal',[]);
-  $('#jlist').innerHTML=list.slice().reverse().map(e=>`<div class="card"><p class="muted small">${esc(e.d)}</p><p>${esc(e.t)}</p></div>`).join('')||'<p class="muted small center">هنوز چیزی ننوشته‌ای.</p>';
+  $('#jlist').innerHTML=list.map((e,i)=>({e,i})).reverse().map(({e,i})=>`<div class="card" style="${i===jEdit?'border-color:var(--amber)':''}">
+    <div class="row" style="justify-content:space-between"><p class="muted small">${esc(e.d)}${e.edited?' · ویرایش‌شده':''}</p>
+    <div class="row" style="gap:6px"><button class="iconbtn" onclick="editJournal(${i})" aria-label="ویرایش">${ic('pen',17)}</button><button class="iconbtn" style="color:var(--rose)" onclick="askDeleteJournal(${i})" aria-label="حذف">${ic('trash',17)}</button></div></div>
+    <p style="white-space:pre-wrap;margin-top:6px">${esc(e.t)}</p></div>`).join('')||'<p class="muted small center">هنوز چیزی ننوشته‌ای.</p>';
 }
 function addJournal(t){ const l=store.get('journal',[]); l.push({t,d:new Date().toLocaleDateString('fa-IR',{weekday:'long',day:'numeric',month:'long'})}); store.set('journal',l); renderJournal(); }
-function saveJournal(){ const t=$('#jtext').value.trim(); if(!t) return; addJournal(t); $('#jtext').value=''; toast('ذخیره شد'); }
+function saveJournal(){
+  const t=$('#jtext').value.trim(); if(!t) return;
+  if(jEdit>=0){ const l=store.get('journal',[]); if(l[jEdit]){ l[jEdit].t=t; l[jEdit].edited=true; store.set('journal',l); } cancelEdit(); toast('ویرایش شد'); return; }
+  addJournal(t); $('#jtext').value=''; toast('ذخیره شد');
+}
+function editJournal(i){
+  const e=store.get('journal',[])[i]; if(!e) return;
+  jEdit=i; $('#jtext').value=e.t; $('#jSave').textContent='ذخیرهٔ تغییرات'; $('#jCancel').style.display='';
+  renderJournal(); $('#view').scrollTo({top:0,behavior:'smooth'}); $('#jtext').focus();
+}
+function cancelEdit(){ jEdit=-1; $('#jtext').value=''; $('#jSave').textContent='ذخیره'; $('#jCancel').style.display='none'; renderJournal(); }
+function askDeleteJournal(i){
+  const e=store.get('journal',[])[i]; if(!e) return;
+  sheet(`<h2>این یادداشت حذف شود؟</h2><div class="card"><p class="muted small">${esc(e.d)}</p><p style="white-space:pre-wrap">${esc(e.t.length>160?e.t.slice(0,160)+'…':e.t)}</p></div>
+    <button class="btn red" onclick="deleteJournal(${i})">${ic('trash',20)}بله، حذف کن</button><button class="btn ghost" onclick="closeSheet()">نه</button>`);
+}
+function deleteJournal(i){
+  const l=store.get('journal',[]); l.splice(i,1); store.set('journal',l);
+  if(jEdit===i) cancelEdit(); else if(jEdit>i) jEdit--;
+  closeSheet(); renderJournal(); toast('حذف شد');
+}
 function savePlan(){ const t=$('#plan').value.trim(); if(t){ addJournal('برنامهٔ تا فردا: '+t); $('#plan').value=''; toast('در دفترچه‌ات ذخیره شد'); } }
 function renderHearts(){
   $('#hearts').innerHTML=[1,2,3,4,5].map(i=>`<button data-i="${i}" aria-label="${toFa(i)}">${ic('heart',32)}</button>`).join('');
