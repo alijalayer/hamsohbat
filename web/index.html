@@ -452,6 +452,7 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
         </div>
         <p class="small muted" id="provHelp"></p>
         <input id="keyInput" type="password" dir="ltr" autocomplete="off">
+        <button class="btn ghost" onclick="openGuide()"><span data-ic="info" data-s="20"></span>راهنمای اتصال قدم‌به‌قدم</button>
         <button class="btn ghost" onclick="pasteKey()">چسباندن از حافظه</button>
         <div class="row"><button class="btn teal" onclick="saveKey()">ذخیره</button><button class="btn ghost" onclick="clearKey()">حذف کلید</button></div>
         <p class="small" id="aiStatus"></p>
@@ -863,7 +864,7 @@ async function turn(content,myBubble){
         :err==='claude 401'||err==='gemini badkey'?'کلید API معتبر نیست. آن را در تنظیمات بررسی کن.'
         :err==='gemini quota'?'سهمیهٔ رایگان امروزِ همهٔ مدل‌های Gemini تمام شده؛ فردا دوباره پر می‌شود.'
         :'اتصال به هوش مصنوعی برقرار نشد؛ پاسخ‌های آماده نمایش داده می‌شود.')
-        +'<br><button class="chip" onclick="go(\'about\');setTimeout(()=>$(\'#keyInput\').scrollIntoView({block:\'center\'}),100)">رفتن به تنظیمات</button>';
+        +'<br><button class="chip" onclick="openGuide()">راهنمای اتصال</button><button class="chip" onclick="go(\'about\');setTimeout(()=>$(\'#keyInput\').scrollIntoView({block:\'center\'}),100)">رفتن به تنظیمات</button>';
       $('#msgs').append(d);
     }
   }
@@ -1046,7 +1047,7 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 
 // Rain, sea and wind are real recordings (public domain / CC0, from Wikimedia Commons),
 // prepared as seamless loops so the native loop has no audible seam.
-const REC={rain:['sounds/rain.opus',.9],sea:['sounds/sea.opus',1],wind:['sounds/wind.opus',.45]};
+const REC={rain:['sounds/rain.opus',1.3],sea:['sounds/sea.opus',1],wind:['sounds/wind.opus',.45]};
 function startRecording(k){
   const [src,level]=REC[k], a=new Audio(src); let fade=0, timer=0;
   a.loop=true; a.volume=0;
@@ -1181,6 +1182,44 @@ async function saveKey(){
     $('#aiStatus').innerHTML=r.ok?'<span style="color:var(--teal)">● کلید درست است؛ نوا آماده است ✓</span>'
       :`<span style="color:var(--rose)">● گوگل این کلید را قبول نکرد. کل کلید را با دکمهٔ «Copy key» دوباره کپی کن (حدود ۵۰ حرف، با AQ. شروع می‌شود).</span>`;
   }catch(e){ $('#aiStatus').innerHTML='<span style="color:var(--amber)">● کلید ذخیره شد، ولی اینترنت برای بررسی‌اش در دسترس نبود.</span>'; }
+}
+/* ---------- AI connection guide ---------- */
+const GUIDE={
+  gemini:{title:'Gemini · رایگان',url:'https://aistudio.google.com/apikey',open:'باز کردن صفحهٔ کلید گوگل',steps:[
+    'دکمهٔ پایین را بزن تا صفحهٔ Google AI Studio باز شود و با حساب گوگل وارد شو.',
+    'اگر اولین بار است، شرایط استفاده را بپذیر.',
+    'بالا سمت راست، دکمهٔ «Create API key» را بزن. اگر پروژه خواست، همان گزینهٔ پیش‌فرض را قبول کن.',
+    'در پنجرهٔ «API key details»، دکمهٔ «Copy key» (پایین سمت راست) را بزن. کلید حدود ۵۰ حرف است و با AQ. شروع می‌شود.',
+    'به هم‌صحبت برگرد: «درباره» ← «تنظیمات هوش مصنوعی» ← «Gemini · رایگان».',
+    '«چسباندن از حافظه» را بزن (یا روی کادر انگشت نگه دار و Paste را بزن) و بعد «ذخیره».',
+    'اگر نوشت «کلید درست است؛ نوا آماده است ✓»، تمام است. از صفحهٔ خانه «گفتگو با نوا» را بزن.'
+  ]},
+  claude:{title:'Claude',url:'https://console.anthropic.com/settings/keys',open:'باز کردن صفحهٔ کلید Anthropic',steps:[
+    'دکمهٔ پایین را بزن تا صفحهٔ Anthropic Console باز شود و حساب بساز یا وارد شو.',
+    'در بخش Billing اعتبار بخر؛ Claude نسخهٔ رایگان API ندارد.',
+    'در بخش API Keys، «Create Key» را بزن، یک اسم بده و کلید را کپی کن. کلید با sk-ant- شروع می‌شود و فقط یک بار نمایش داده می‌شود.',
+    'به هم‌صحبت برگرد: «درباره» ← «تنظیمات هوش مصنوعی» ← «Claude».',
+    'کلید را بچسبان و «ذخیره» را بزن، بعد یک گفتگو شروع کن.'
+  ]}
+};
+const TROUBLE=[
+  ['«کلید API معتبر نیست»','کلید کامل کپی نشده یا متن دیگری چسبانده شده. در صفحهٔ گوگل دوباره «Copy key» را بزن و بچسبان. اپ طول و شروع متن چسبانده‌شده را نشان می‌دهد.'],
+  ['«سهمیه تمام شده»','هر مدل Gemini سهمیهٔ رایگان روزانهٔ جدا دارد و اپ خودش بین مدل‌ها جابه‌جا می‌شود. اگر همه تمام شد، فردا دوباره پر می‌شود؛ یا در AI Studio بخش Billing را فعال کن.'],
+  ['اشتراک Gemini Pro دارم','اشتراک Gemini Pro برای اپ و سایت خود Gemini است و روی سهمیهٔ API اثری ندارد؛ این دو جدا حساب می‌شوند.'],
+  ['کلید را در گوشی وارد کردم ولی در مرورگر کار نمی‌کند','کلید فقط روی همان دستگاه و همان برنامه ذخیره می‌شود. در هر کدام جدا واردش کن.'],
+  ['امنیت کلید','کلید را برای کسی نفرست و جایی منتشر نکن. اگر لو رفت، در همان صفحه «Delete key» را بزن و یک کلید تازه بساز.']
+];
+function openGuide(p){
+  p=p||provider();
+  const g=GUIDE[p];
+  sheet(`<h2>راهنمای اتصال به هوش مصنوعی</h2>
+    <div class="seg" style="grid-template-columns:1fr 1fr">${Object.keys(GUIDE).map(k=>`<button class="${k===p?'sel':''}" onclick="openGuide('${k}')">${GUIDE[k].title}</button>`).join('')}</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">${g.steps.map((s,i)=>`<div class="row" style="align-items:flex-start;gap:10px"><span class="tag" style="flex:none;min-width:24px;text-align:center">${toFa(i+1)}</span><p class="small">${esc(s)}</p></div>`).join('')}</div>
+    <a class="btn teal" href="${g.url}" target="_blank" rel="noopener" style="text-decoration:none">${ic('globe',20)}${g.open}</a>
+    <h3>اگر کار نکرد</h3>
+    <div class="card">${TROUBLE.map(([q,a])=>`<div class="rev" style="display:block"><h3 style="font-size:14px">${q}</h3><p class="muted small">${a}</p></div>`).join('')}</div>
+    <button class="btn" onclick="closeSheet();store.set('aiProvider','${p}');go('about');aiStatus();setTimeout(()=>$('#keyInput').scrollIntoView({block:'center'}),150)">رفتن به تنظیمات و وارد کردن کلید</button>
+    <button class="btn ghost" onclick="closeSheet()">بستن</button>`);
 }
 async function pasteKey(){
   try{ const t=await navigator.clipboard.readText(); if(t){ $('#keyInput').value=t; saveKey(); return; } }catch(e){}

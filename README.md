@@ -81,7 +81,7 @@ android/                پوستهٔ اندروید (WebView) که web/index.htm
 
 صداهای باران، نسیم و موج ضبط‌های واقعی از Wikimedia Commons هستند، کوتاه و به حلقه‌های بی‌درز تبدیل شده‌اند:
 
-- باران: [Rain against the window.ogg](https://commons.wikimedia.org/wiki/File:Rain_against_the_window.ogg) (مالکیت عمومی)
+- باران: [Light Rain Distant Thunder July 5th 2016.wav](https://commons.wikimedia.org/wiki/File:Light_Rain_Distant_Thunder_July_5th_2016.wav) (CC0؛ فقط بخش بدون رعد)
 - نسیم: [Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (مالکیت عمومی)
 - موج: [Ocean Waves on a Tropical Beach.ogg](https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg) (CC0)
 
