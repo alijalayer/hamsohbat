@@ -451,6 +451,7 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
         </div>
         <p class="small muted" id="provHelp"></p>
         <input id="keyInput" type="password" dir="ltr" autocomplete="off">
+        <button class="btn ghost" onclick="pasteKey()">چسباندن از حافظه</button>
         <div class="row"><button class="btn teal" onclick="saveKey()">ذخیره</button><button class="btn ghost" onclick="clearKey()">حذف کلید</button></div>
         <p class="small" id="aiStatus"></p>
       </div>
@@ -1070,7 +1071,13 @@ function aiStatus(){
   $('#aiStatus').innerHTML=p.key()?`<span style="color:var(--teal)">● کلید ${p.name} ذخیره شده</span>`:'<span style="color:var(--amber)">● هنوز کلیدی وارد نشده؛ گفتگو با پاسخ‌های آماده کار می‌کند</span>';
 }
 async function saveKey(){
-  const k=$('#keyInput').value.trim(); if(!k) return;
+  let k=$('#keyInput').value.trim(); if(!k) return;
+  // Pull the key out of whatever was pasted (labels, quotes, the whole dialog text…).
+  if(provider()==='gemini'){
+    const m=k.match(/AQ\.[A-Za-z0-9_\-]{20,}|AIza[0-9A-Za-z_\-]{30,}/);
+    if(!m){ $('#aiStatus').innerHTML=`<span style="color:var(--rose)">● این متن کلید Gemini نیست (${toFa(k.length)} حرف، شروع با «${esc(k.slice(0,3))}»). کلید درست حدود ۵۰ حرف است و با AQ. شروع می‌شود. در صفحهٔ گوگل دکمهٔ «Copy key» را بزن و دوباره بچسبان.</span>`; return; }
+    k=m[0];
+  }
   store.set(PROV[provider()].store,k); $('#keyInput').value=''; aiStatus();
   if(provider()!=='gemini'){ toast('کلید ذخیره شد'); return; }
   // Check the Gemini key right away so a wrong paste is caught here, not in the chat.
@@ -1081,6 +1088,10 @@ async function saveKey(){
     $('#aiStatus').innerHTML=r.ok?'<span style="color:var(--teal)">● کلید درست است؛ نوا آماده است ✓</span>'
       :`<span style="color:var(--rose)">● گوگل این کلید را قبول نکرد. کل کلید را با دکمهٔ «Copy key» دوباره کپی کن (حدود ۵۰ حرف، با AQ. شروع می‌شود).</span>`;
   }catch(e){ $('#aiStatus').innerHTML='<span style="color:var(--amber)">● کلید ذخیره شد، ولی اینترنت برای بررسی‌اش در دسترس نبود.</span>'; }
+}
+async function pasteKey(){
+  try{ const t=await navigator.clipboard.readText(); if(t){ $('#keyInput').value=t; saveKey(); return; } }catch(e){}
+  $('#keyInput').focus(); toast('روی کادر کلید انگشت را نگه دار و «Paste» را بزن');
 }
 function clearKey(){ store.set(PROV[provider()].store,''); aiStatus(); toast('کلید حذف شد'); }
 
