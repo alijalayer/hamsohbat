@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:Vaz;font-weight:400;src:url(../web/fonts/vazirmatn-400.woff2)}
+@font-face{font-family:Vaz;font-weight:600;src:url(../web/fonts/vazirmatn-600.woff2)}
+@font-face{font-family:Vaz;font-weight:800;src:url(../web/fonts/vazirmatn-800.woff2)}
+@font-face{font-family:VazL;font-weight:400;src:url(../web/fonts/vazirmatn-latin-400.woff2)}
+@font-face{font-family:VazL;font-weight:600;src:url(../web/fonts/vazirmatn-latin-600.woff2)}
+html,body{margin:0;background:#000}
+canvas{display:block;width:540px;height:960px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// The whole video is a pure function of time: render(t) draws the frame at t seconds.
+const W=1080, H=1920, DUR=32;
+const c=document.getElementById('c'), x=c.getContext('2d');
+const SHOTS=['test','analyzing','matching','chat','sos','home'];
+const img={};
+
+/* ---------- helpers ---------- */
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const prog=(t,a,b)=>clamp((t-a)/(b-a));
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const back=t=>{ const c1=1.5,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); };
+// Opacity that fades in over [a,a+fi] and out over [b-fo,b].
+const win=(t,a,b,fi=.5,fo=.5)=>Math.min(prog(t,a,a+fi),1-prog(t,b-fo,b));
+let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+const STARS=Array.from({length:160},()=>({x:rnd()*W,y:rnd()*H,r:.6+rnd()*2.2,p:rnd()*6.28,s:.5+rnd()*1.5}));
+
+function rr(X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+function text(s,X,Y,size,{w=600,color='#eef1ff',a=1,font='Vaz',dir='rtl',grad=null,glow=0}={}){
+  if(a<=0) return;
+  x.save(); x.globalAlpha*=a; x.font=`${w} ${size}px ${font}, VazL`; x.direction=dir; x.textAlign='center'; x.textBaseline='middle';
+  if(grad){ const m=x.measureText(s).width; const g=x.createLinearGradient(X-m/2,0,X+m/2,0); grad.forEach((cc,i)=>g.addColorStop(i/(grad.length-1),cc)); x.fillStyle=g; } else x.fillStyle=color;
+  if(glow){ x.shadowColor=color; x.shadowBlur=glow; }
+  x.fillText(s,X,Y); x.restore();
+}
+function orb(X,Y,r,inner,outer,glow,a=1){
+  if(a<=0) return;
+  x.save(); x.globalAlpha*=a;
+  let g=x.createRadialGradient(X,Y,0,X,Y,r*3.2); g.addColorStop(0,outer+'66'); g.addColorStop(1,outer+'00');
+  x.fillStyle=g; x.beginPath(); x.arc(X,Y,r*3.2*glow,0,7); x.fill();
+  g=x.createRadialGradient(X-r*.3,Y-r*.35,r*.1,X,Y,r); g.addColorStop(0,inner); g.addColorStop(1,outer);
+  x.fillStyle=g; x.beginPath(); x.arc(X,Y,r,0,7); x.fill(); x.restore();
+}
+
+/* ---------- background ---------- */
+function bg(t){
+  let g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0b1026'); g.addColorStop(.6,'#161b45'); g.addColorStop(1,'#0f2a3a');
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  const blobs=[[870+90*Math.sin(t*.21),260+120*Math.cos(t*.17),620,'#5b4bd6',.42],[150+80*Math.cos(t*.15),1650+90*Math.sin(t*.2),560,'#1aa59a',.38],[520+140*Math.sin(t*.12),980,420,'#d9825b',.13]];
+  blobs.forEach(([X,Y,r,col,a])=>{ const rg=x.createRadialGradient(X,Y,0,X,Y,r); rg.addColorStop(0,col+Math.round(a*255).toString(16).padStart(2,'0')); rg.addColorStop(1,col+'00'); x.fillStyle=rg; x.fillRect(0,0,W,H); });
+  const sa=prog(t,0,1.5);
+  STARS.forEach(s=>{ x.globalAlpha=sa*(.25+.6*(.5+.5*Math.sin(t*s.s+s.p))); x.fillStyle='#fff'; x.beginPath(); x.arc(s.x,(s.y-t*6*s.s+H)%H,s.r,0,7); x.fill(); });
+  x.globalAlpha=1;
+}
+
+/* ---------- phone ---------- */
+const PW=560, PH=1212;
+function phone(cx,cy,sc,a,screens){
+  if(a<=0) return;
+  x.save(); x.globalAlpha=a; x.translate(cx,cy); x.scale(sc,sc);
+  x.shadowColor='rgba(120,110,255,.45)'; x.shadowBlur=90; x.shadowOffsetY=30;
+  rr(-PW/2,-PH/2,PW,PH,78); x.fillStyle='#0a0c1c'; x.fill();
+  x.shadowColor='transparent';
+  const bg2=x.createLinearGradient(-PW/2,-PH/2,PW/2,PH/2); bg2.addColorStop(0,'rgba(255,255,255,.35)'); bg2.addColorStop(.5,'rgba(255,255,255,.06)'); bg2.addColorStop(1,'rgba(255,255,255,.25)');
+  x.lineWidth=4; x.strokeStyle=bg2; x.stroke();
+  const sw=PW-36, sh=PH-36;
+  x.save(); rr(-sw/2,-sh/2,sw,sh,62); x.clip();
+  screens.forEach(([name,alpha,dx=0])=>{ if(alpha>0 && img[name]){ x.globalAlpha=a*alpha; const ih=sw*img[name].height/img[name].width; x.drawImage(img[name],-sw/2+dx,-sh/2,sw,ih); } });
+  x.restore();
+  x.globalAlpha=a; rr(-70,-PH/2+30,140,38,19); x.fillStyle='#05060f'; x.fill();
+  x.restore();
+}
+
+/* ---------- caption with step badge ---------- */
+function caption(t,a,b,num,title,sub){
+  const k=win(t,a,b,.6,.5); if(k<=0) return;
+  const dy=(1-easeOut(prog(t,a,a+.8)))*40;
+  if(num){ x.save(); x.globalAlpha=k; orb(W/2,175+dy,34,'#fff3df','#ffc27a',.7); x.restore(); text(num,W/2,178+dy,40,{w:800,color:'#0b1026',a:k}); }
+  text(title,W/2,275+dy,62,{w:800,a:k,grad:['#ffc27a','#ffe2bd','#5fd1c1']});
+  text(sub,W/2,355+dy,36,{w:400,color:'#c3c8ea',a:k*prog(t,a+.3,a+1)});
+}
+
+/* ---------- scenes ---------- */
+function render(t){
+  x.setTransform(1,0,0,1,0,0); x.globalAlpha=1;
+  bg(t);
+
+  // S1 — two lights meet, title.
+  if(t<4.8){
+    const a=1-prog(t,4.1,4.8), m=easeInOut(prog(t,.4,2.6));
+    const sep=lerp(620,58,m), cy=H/2-120;
+    x.save(); x.globalCompositeOperation='screen';
+    orb(W/2+sep,cy,92,'#d7fff8','#5fd1c1',1+.1*Math.sin(t*3),a*prog(t,.2,1));
+    orb(W/2-sep,cy,92,'#fff3df','#ffc27a',1+.1*Math.cos(t*3),a*prog(t,.2,1));
+    x.restore();
+    const flash=Math.max(0,1-Math.abs(t-2.6)*2.2);
+    if(flash>0){ x.save(); x.globalAlpha=flash*.5*a; const rg=x.createRadialGradient(W/2,cy,0,W/2,cy,700); rg.addColorStop(0,'#fff'); rg.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=rg; x.fillRect(0,0,W,H); x.restore(); }
+    const ta=prog(t,2.5,3.3)*a;
+    text('هم‌صحبت',W/2,H/2+130+(1-ta)*30,128,{w:800,a:ta});
+    text('دو نور، در تاریک‌ترین شب',W/2,H/2+250,46,{w:400,color:'#a3a9cf',a:prog(t,3.1,3.8)*a});
+  }
+
+  // S2 — the feeling, then someone else.
+  if(t>4.5 && t<9.3){
+    const a=win(t,4.6,9.2,.6,.7);
+    const lone=lerp(1,.55,prog(t,5,7));
+    orb(W/2,H/2-60,46,'#fff3df','#ffc27a',lone,a*lone);
+    const far=prog(t,7.3,8.3);
+    if(far>0){
+      orb(W/2+300,H/2-330,30,'#d7fff8','#5fd1c1',1,a*far);
+      x.save(); x.globalAlpha=a*far*.8; x.setLineDash([10,14]); x.lineDashOffset=-t*40; x.strokeStyle='#ffc27a'; x.lineWidth=4;
+      x.beginPath(); x.moveTo(W/2,H/2-60); x.quadraticCurveTo(W/2+80,H/2-420,W/2+300,H/2-330);
+      const L=prog(t,7.5,8.6); x.globalAlpha*=L; x.stroke(); x.restore();
+    }
+    text('وقتی شب خیلی طولانی می‌شود…',W/2,H/2+220,58,{w:600,a:a*prog(t,4.9,5.6)});
+    text('و حس می‌کنی هیچ‌کس نمی‌فهمد…',W/2,H/2+310,50,{w:400,color:'#c3c8ea',a:a*prog(t,6.1,6.8)*(1-prog(t,7.2,7.6))});
+    text('یک نفر، جایی در دنیا، حالت را می‌فهمد.',W/2,H/2+310,50,{w:600,a:a*prog(t,7.7,8.3),grad:['#ffc27a','#5fd1c1']});
+  }
+
+  // S3–S6 — the app.
+  if(t>8.9 && t<27.6){
+    const enter=easeOut(prog(t,9,10.1)), exit=prog(t,26.6,27.5);
+    const cy=lerp(H+800,1170,enter)+Math.sin(t*1.1)*10 + exit*80, sc=1.1*(1-exit*.15), a=1-exit;
+    // SOS rings behind the phone.
+    const sosA=win(t,23.2,27.4,.5,.6);
+    if(sosA>0) for(let i=0;i<3;i++){ const p=((t*0.55+i/3)%1); x.save(); x.globalAlpha=sosA*(1-p)*.7; x.strokeStyle='#ff5a6a'; x.lineWidth=6; x.beginPath(); x.arc(W/2,cy,330+p*420,0,7); x.stroke(); x.restore(); }
+    // Glow behind the matching globe.
+    const swap=(a0,b0)=>easeInOut(prog(t,a0,b0));
+    const s=[
+      ['test',1-swap(11.4,11.9)],
+      ['analyzing',swap(11.4,11.9)*(1-swap(13.6,14.1))],
+      ['matching',swap(13.6,14.1)*(1-swap(18.2,18.7))],
+      ['chat',swap(18.2,18.7)*(1-swap(23.2,23.7))],
+      ['sos',swap(23.2,23.7)]
+    ];
+    phone(W/2,cy,sc,a,s);
+    caption(t,9.4,13.8,'۱','یک آزمون کوتاه تصویری','هوش مصنوعی در چند ثانیه حال تو را می‌فهمد');
+    caption(t,13.8,18.4,'۲','کسی هم‌حال تو، از هر جای دنیا','هم‌سن، هم‌حال، با بیشترین تطابق آنلاین');
+    caption(t,18.4,23.4,'۳','گفتگو بدون مرز زبان','ترجمهٔ زنده · متن، صدا و تصویر');
+    caption(t,23.4,27.2,'','کمک فوری، فقط با یک لمس','ناشناس و رمزنگاری‌شده؛ فقط وقتی خودت بخواهی');
+    // Pop-out badges.
+    const badge=(tx,ty,label,t0,t1,col)=>{ const k=win(t,t0,t1,.35,.4); if(k<=0) return; const s2=back(prog(t,t0,t0+.45));
+      x.save(); x.globalAlpha=k; x.translate(tx,ty); x.scale(s2,s2); x.font='600 34px Vaz, VazL'; const w=x.measureText(label).width+60;
+      x.shadowColor=col; x.shadowBlur=30; rr(-w/2,-36,w,72,36); x.fillStyle='rgba(20,24,60,.92)'; x.fill(); x.shadowBlur=0; x.lineWidth=2.5; x.strokeStyle=col; x.stroke(); x.restore();
+      text(label,tx,ty+2,34,{w:600,a:k*clamp(s2)}); };
+    badge(W/2+300,1500,'✓ ۹۵٪ تطابق',15.6,18.3,'#ffc27a');
+    badge(W/2-290,780,'برلین ⇄ تهران',16.2,18.3,'#5fd1c1');
+    badge(W/2+290,820,'Deutsch ⇄ فارسی',19.4,23.2,'#9b8cff');
+    badge(W/2-280,1560,'🔒 کاملاً ناشناس',20.4,23.2,'#5fd1c1');
+    badge(W/2+290,1500,'📍 اورژانس + مشاور',24.4,27.0,'#ff5a6a');
+  }
+
+  // S7 — end card.
+  if(t>27.2){
+    const a=prog(t,27.4,28.3)*(1-prog(t,31.2,32));
+    const m=easeOut(prog(t,27.3,28.6)), cy=700;
+    x.save(); x.globalCompositeOperation='screen';
+    orb(W/2+lerp(240,48,m),cy,78,'#d7fff8','#5fd1c1',1+.08*Math.sin(t*3),a);
+    orb(W/2-lerp(240,48,m),cy,78,'#fff3df','#ffc27a',1+.08*Math.cos(t*3),a);
+    x.restore();
+    text('هم‌صحبت',W/2,cy+230,124,{w:800,a});
+    text('تو تنها نیستی.',W/2,cy+360,64,{w:600,a:a*prog(t,28.3,29),grad:['#ffc27a','#ffe2bd','#5fd1c1']});
+    const k=a*prog(t,29,29.7);
+    x.save(); x.globalAlpha=k; rr(W/2-300,cy+460,600,96,48); x.fillStyle='rgba(255,194,122,.95)'; x.fill(); x.restore();
+    text('دانلود برای اندروید',W/2,cy+510,42,{w:800,color:'#0b1026',a:k});
+    text('github.com/alijalayer/hamsohbat',W/2,cy+610,32,{w:400,color:'#a3a9cf',a:k,font:'VazL',dir:'ltr'});
+    const cr=a*prog(t,29.6,30.3);
+    text('طراح و سازنده',W/2,1600,32,{w:400,color:'#a3a9cf',a:cr});
+    text('نعیم جلایری · کارشناس روانشناسی',W/2,1655,42,{w:600,a:cr});
+    text('اگر همین الان در خطر هستی: ۱۱۵ · ۱۲۳ · ۱۴۸۰',W/2,1810,28,{w:400,color:'#8a90bd',a:cr});
+  }
+}
+
+window.ready=(async()=>{
+  await Promise.all(SHOTS.map(n=>new Promise(r=>{ const i=new Image(); i.onload=()=>{ img[n]=i; r(); }; i.src='shots/'+n+'.png'; })));
+  await Promise.all(['400','600','800'].map(w=>document.fonts.load(`${w} 40px Vaz`,'سلام')));
+  await Promise.all(['400','600'].map(w=>document.fonts.load(`${w} 40px VazL`,'Hello')));
+  render(0); return true;
+})();
+</script>
+</body>
+</html>

@@ -5,3 +5,7 @@ android/app/build/
 android/app/src/main/assets/
 android/local.properties
 *.apk
+video/node_modules/
+video/frames/
+video/*.mp4
+video/*.wav
