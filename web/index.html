@@ -110,6 +110,9 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
 .hero > *{position:relative}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--teal)}
 .live i{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:tw 1.6s infinite}
+.nova-card{display:flex;align-items:center;gap:14px;width:100%;text-align:right;padding:16px;border-radius:24px;background:linear-gradient(135deg,rgba(155,140,255,.28),rgba(255,122,133,.12));border:1px solid rgba(255,255,255,.16);cursor:pointer;transition:transform .2s}
+.nova-card:active{transform:scale(.98)}
+.nova-orb{width:58px;height:58px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#f3efff,#9b8cff 50%,#5b4bd6);box-shadow:0 0 30px rgba(155,140,255,.65);animation:breathe 4s ease-in-out infinite}
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .tool{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke);cursor:pointer;text-align:right;transition:transform .2s}
 .tool:active{transform:scale(.97)}
@@ -290,6 +293,11 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
         <p class="muted small" style="margin-bottom:14px">ناشناس · رمزنگاری‌شده · با ترجمهٔ زنده به هر زبانی</p>
         <button class="btn" onclick="startFlow()"><span data-ic="users"></span>پیدا کردن هم‌صحبت</button>
       </div>
+      <button class="nova-card" onclick="openNova()">
+        <div class="nova-orb"></div>
+        <div style="flex:1"><h3>گفتگو با نوا <span class="tag">AI</span></h3><p class="muted small">همراه هوش مصنوعی · همین الان، بدون آزمون و انتظار</p></div>
+        <span data-ic="chat" style="color:var(--violet)"></span>
+      </button>
       <h3 style="margin-top:4px">ابزارهای آرامش</h3>
       <div class="tools">
         <button class="tool" onclick="go('breath')"><div class="ti" style="--c:var(--teal)" data-ic="wind"></div><div><h3>تنفس</h3><p class="muted small">چند دقیقه آرام شدن</p></div></button>
@@ -357,13 +365,13 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
       <div class="card chat-head">
         <div class="av" id="peerAv"></div>
         <div style="flex:1;min-width:0">
-          <h3>همراه هوش مصنوعی <span class="tag">AI</span></h3>
+          <h3><span id="peerName">همراه هوش مصنوعی</span> <span class="tag">AI</span></h3>
           <div class="status"><i></i><span id="peerMeta"></span></div>
         </div>
         <button class="iconbtn" onclick="startCall('voice')" aria-label="تماس صوتی" data-ic="phone" data-s="19"></button>
         <button class="iconbtn" onclick="startCall('video')" aria-label="تماس تصویری" data-ic="video" data-s="19"></button>
       </div>
-      <div class="row" style="justify-content:space-between">
+      <div class="row" id="trRow" style="justify-content:space-between">
         <span class="small muted row" style="gap:6px"><span data-ic="globe" data-s="16"></span>ترجمهٔ زنده</span>
         <label class="toggle"><input type="checkbox" id="trToggle" checked onchange="toggleTr()"><span></span></label>
       </div>
@@ -466,7 +474,7 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
   <video id="vid" autoplay playsinline muted></video>
   <div class="center">
     <p class="muted small" id="callKind"></p>
-    <h2>همراه هوش مصنوعی</h2>
+    <h2 id="callName">همراه هوش مصنوعی</h2>
     <p class="status" style="justify-content:center" id="callTime">در حال اتصال…</p>
   </div>
   <div class="center">
@@ -712,6 +720,12 @@ const OFFLINE={fa:['متأسفم، الان اتصالم ضعیف است. ولی
   orig:["Sorry, my connection is weak right now. But I'm still here, reading.","I hear you. Go on, there's no rush.","I'm with you. If it gets too hard, the urgent-help button is always at the top."]};
 const QUICK=['خیلی خسته‌ام','کسی را ندارم','نمی‌دانم چه بگویم','فقط می‌خواهم کسی گوش بدهد'];
 function systemPrompt(){
+  if(state.peer.nova) return `You are "Nova" (نوا), the AI companion inside "Hamsohbat", an anonymous support app for people in deep loneliness or emotional crisis. The user knows you are an AI.
+Speak natural, warm, everyday Persian (Farsi), like a kind friend who listens, not like a therapist or a textbook. Keep each message short (1-3 sentences). Reflect feelings, ask one gentle open question at a time, never lecture or list advice. Remember what the user told you earlier in the conversation.
+Safety rules: never describe or discuss methods of self-harm; never agree to plans, pacts, goodbyes or a "last conversation"; if the user mentions intent, a plan, means or a timeline, stay calm and present, say you want them safe tonight, and encourage them to call 1480 (counselling line) or 123 / 115 (emergency) in Iran, or press the red "urgent help" button.
+Respond with JSON only, no other text:
+{"reply": "<your reply in Persian>", "risk": "none" | "elevated" | "imminent"}
+risk = "imminent" if the user expresses intent, a plan, means or a timeline to end their life; "elevated" for hopelessness or passive wishes to die; otherwise "none".`;
   const peer=LANG_NAMES[state.peer.code];
   return `You are the conversation partner inside a demo of "Hamsohbat", an anonymous peer-support app for people in deep loneliness or suicidal crisis. The app clearly tells the user you are an AI companion.
 Talk like a warm, ordinary person who has also been through dark times and came through them, not like a therapist. Keep each message short (1-3 sentences). Listen, reflect feelings, ask one gentle open question at a time, never lecture or list advice.
@@ -786,10 +800,28 @@ function parseAI(text){
   if(m){ try{ const o=JSON.parse(m[0]); if(o.reply) return o; }catch(e){} }
   return text.trim()?{reply:text.trim(),reply_user_lang:text.trim(),risk:'none'}:null;
 }
+// Direct chat with Nova: no test, no matching, no translation.
+function openNova(){
+  Object.assign(state,{peer:{nova:true,code:'fa',c:'radial-gradient(circle at 35% 30%,#f3efff,#9b8cff 50%,#5b4bd6)'},ai:[],offlineIdx:0,warned:false});
+  go('chat'); $('#msgs').innerHTML='';
+  $('#peerAv').style.background=state.peer.c;
+  $('#peerName').textContent='نوا'; $('#callName').textContent='نوا';
+  $('#peerMeta').textContent='همراه هوش مصنوعی · همیشه بیدار';
+  $('#trRow').style.display='none';
+  sys('نوا یک همراه هوش مصنوعی است، نه یک انسان. هر چه دوست داری بگو؛ اگر حالت خیلی بد شد، دکمهٔ «کمک فوری» همیشه بالای صفحه است.');
+  setQuick();
+  turn('[The user just opened a chat with you. Greet them briefly and warmly in Persian and invite them to share.]',null);
+}
+function setQuick(){
+  $('#quick').innerHTML=QUICK.map(q=>`<button class="chip">${q}</button>`).join('');
+  $('#quick').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ $('#inp').value=c.textContent; send(); });
+}
 function openChat(p){
   Object.assign(state,{peer:p,ai:[],offlineIdx:0,warned:false});
   go('chat'); $('#msgs').innerHTML='';
   $('#peerAv').style.background=p.c;
+  $('#peerName').textContent='همراه هوش مصنوعی'; $('#callName').textContent='همراه هوش مصنوعی';
+  $('#trRow').style.display='';
   $('#peerMeta').textContent=`آنلاین · ${p.lang} · تطابق ${toFa(p.s)}٪`;
   sys('در این دمو به‌جای یک انسان، یک همراه هوش مصنوعی به تو وصل شده که به زبان دیگری حرف می‌زند تا ترجمهٔ زنده را ببینی.');
   $('#quick').innerHTML=QUICK.map(q=>`<button class="chip">${q}</button>`).join('');
@@ -809,7 +841,7 @@ async function turn(content,myBubble){
   if(!$('#chat').classList.contains('on')) return;
   if(!o){
     const i=state.offlineIdx++%OFFLINE.fa.length;
-    o={reply:OFFLINE.orig[i],reply_user_lang:OFFLINE.fa[i],risk:'none'};
+    o=state.peer.nova?{reply:OFFLINE.fa[i],risk:'none'}:{reply:OFFLINE.orig[i],reply_user_lang:OFFLINE.fa[i],risk:'none'};
     if(state.offlineIdx===1){
       const d=document.createElement('div'); d.className='msg sys';
       d.innerHTML=(err==='nokey'?'هوش مصنوعی هنوز وصل نیست. برای گفتگوی واقعی، کلید رایگان Gemini را در تنظیمات وارد کن. تا آن موقع پاسخ‌های آماده نمایش داده می‌شود.'
@@ -821,7 +853,8 @@ async function turn(content,myBubble){
     }
   }
   state.ai.push({role:'assistant',content:JSON.stringify(o)});
-  if(myBubble) myBubble.querySelector('small').textContent = o.translated_user ? '→ '+o.translated_user : '';
+  const sm=myBubble&&myBubble.querySelector('small');
+  if(sm){ if(o.translated_user) sm.textContent='→ '+o.translated_user; else sm.remove(); }
   const d=document.createElement('div'); d.className='msg peer';
   d.dataset.fa=o.reply_user_lang||o.reply; d.dataset.orig=o.reply;
   renderPeer(d); $('#msgs').append(d); scrollChat();
@@ -836,7 +869,7 @@ const RISK=/(^|[\s،.؛!?])(قرص|طناب|تیغ|اسلحه|خودکشی|خو�
 function send(){
   const v=$('#inp').value.trim(); if(!v||$('#inp').disabled) return;
   const d=document.createElement('div'); d.className='msg me';
-  d.innerHTML=`${esc(v)}<small>→ در حال ترجمه…</small>`;
+  d.innerHTML=esc(v)+(state.peer.nova?'':'<small>→ در حال ترجمه…</small>');
   $('#msgs').append(d); $('#inp').value='';
   if(RISK.test(v)) guardian();
   turn(v,d);
@@ -1036,7 +1069,19 @@ function aiStatus(){
   $('#keyInput').placeholder=p.ph;
   $('#aiStatus').innerHTML=p.key()?`<span style="color:var(--teal)">● کلید ${p.name} ذخیره شده</span>`:'<span style="color:var(--amber)">● هنوز کلیدی وارد نشده؛ گفتگو با پاسخ‌های آماده کار می‌کند</span>';
 }
-function saveKey(){ const k=$('#keyInput').value.trim(); if(!k) return; store.set(PROV[provider()].store,k); if(provider()==='gemini') store.set('geminiModel',''); $('#keyInput').value=''; aiStatus(); toast('کلید ذخیره شد'); }
+async function saveKey(){
+  const k=$('#keyInput').value.trim(); if(!k) return;
+  store.set(PROV[provider()].store,k); $('#keyInput').value=''; aiStatus();
+  if(provider()!=='gemini'){ toast('کلید ذخیره شد'); return; }
+  // Check the Gemini key right away so a wrong paste is caught here, not in the chat.
+  store.set('geminiModel','');
+  $('#aiStatus').innerHTML='<span class="muted">● در حال بررسی کلید…</span>';
+  try{
+    const r=await fetch(GEMINI+'/models?pageSize=1',{headers:{'x-goog-api-key':k}});
+    $('#aiStatus').innerHTML=r.ok?'<span style="color:var(--teal)">● کلید درست است؛ نوا آماده است ✓</span>'
+      :`<span style="color:var(--rose)">● گوگل این کلید را قبول نکرد. کل کلید را با دکمهٔ «Copy key» دوباره کپی کن (حدود ۵۰ حرف، با AQ. شروع می‌شود).</span>`;
+  }catch(e){ $('#aiStatus').innerHTML='<span style="color:var(--amber)">● کلید ذخیره شد، ولی اینترنت برای بررسی‌اش در دسترس نبود.</span>'; }
+}
 function clearKey(){ store.set(PROV[provider()].store,''); aiStatus(); toast('کلید حذف شد'); }
 
 /* ---------- start ---------- */
