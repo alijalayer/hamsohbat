@@ -2,12 +2,16 @@ package app.hamsohbat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -34,7 +38,22 @@ public class MainActivity extends Activity {
         s.setGeolocationEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
 
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new WebViewClient() {
+            // Crisis-line numbers open the phone dialer; web links open in the browser.
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                String scheme = uri.getScheme();
+                if ("file".equals(scheme)) return false;
+                String action = "tel".equals(scheme) ? Intent.ACTION_DIAL : Intent.ACTION_VIEW;
+                try {
+                    startActivity(new Intent(action, uri));
+                } catch (ActivityNotFoundException e) {
+                    return true;
+                }
+                return true;
+            }
+        });
         web.setWebChromeClient(new WebChromeClient() {
             // The page asks for location only after the user confirms the SOS sheet.
             @Override

@@ -935,9 +935,13 @@ function chooseExpert(dispatched){
 }
 function connectExpert(t){
   const pick=t==='AI'?(state.warned?'اپراتور خط بحران':'مشاور'):t;
+  // The in-app expert network doesn't exist yet, so this screen hands off to real crisis lines.
   sheet(`<div class="pulse" style="--c:var(--teal)"><div class="in">${ic('headset',34)}</div></div>
-    <p class="center">${t==='AI'?`هوش مصنوعی با توجه به وضعیت تو، <b>${pick}</b> را انتخاب کرد.<br>`:''}در حال وصل‌شدن به ${pick}…</p>
-    <p class="center muted small">در نسخهٔ واقعی اینجا تماس مستقیم برقرار می‌شود. <span class="tag">دمو</span></p>
+    <p class="center">${t==='AI'?`هوش مصنوعی با توجه به وضعیت تو، <b>${pick}</b> را پیشنهاد کرد.<br>`:''}همین الان می‌توانی با یک انسان واقعی حرف بزنی:</p>
+    <a class="btn teal" href="tel:1480" style="text-decoration:none">${ic('phone',20)}تماس با صدای مشاور · ۱۴۸۰</a>
+    <a class="btn red" href="tel:123" style="text-decoration:none">${ic('phone',20)}اورژانس اجتماعی · ۱۲۳</a>
+    <a class="btn ghost" href="https://findahelpline.com" target="_blank" rel="noopener" style="text-decoration:none">${ic('globe',20)}خطوط کمک در کشورهای دیگر</a>
+    <p class="center muted small">اتصال مستقیم به متخصص داخل خود اپ هنوز ساخته نشده است. <span class="tag">دمو</span></p>
     <button class="btn ghost" onclick="closeSheet()">بستن</button>`);
 }
 
