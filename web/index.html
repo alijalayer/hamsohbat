@@ -743,42 +743,51 @@ async function callAI(){
   return provider()==='claude' ? callClaude() : callGemini();
 }
 const GEMINI='https://generativelanguage.googleapis.com/v1beta';
-// Picks the newest stable Flash model this key can use, so no model name is hard-coded.
-async function geminiModel(key){
-  const cached=store.get('geminiModel','');
-  if(cached) return cached;
-  let best='models/gemini-2.5-flash';
+// Every Flash model has its own free daily quota, so keep a ranked list of them
+// (newest full models first, then the lite ones) and move down it when one runs out.
+async function geminiModels(key){
+  const cached=store.get('geminiModels',null);
+  if(cached&&cached.length) return cached;
+  let list=['models/gemini-flash-latest','models/gemini-2.5-flash','models/gemini-flash-lite-latest','models/gemini-2.5-flash-lite'];
   try{
     const r=await fetch(GEMINI+'/models?pageSize=200',{headers:{'x-goog-api-key':key}});
     if(r.status===400||r.status===403) throw new Error('gemini badkey');
     const j=await r.json();
     const ok=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')
-      && /^models\/gemini-\d+(\.\d+)?-flash$/.test(m.name));
-    const ver=m=>parseFloat(m.name.match(/gemini-([\d.]+)/)[1]);
-    ok.sort((a,b)=>ver(b)-ver(a));
-    if(ok[0]) best=ok[0].name;
+      && /^models\/gemini-\d+(\.\d+)?-flash(-lite)?$/.test(m.name)).map(m=>m.name);
+    const ver=n=>parseFloat(n.match(/gemini-([\d.]+)/)[1]), lite=n=>n.endsWith('-lite')?1:0;
+    ok.sort((a,b)=>lite(a)-lite(b)||ver(b)-ver(a));
+    if(ok.length) list=ok;
   }catch(e){ if(e.message==='gemini badkey') throw e; }
-  store.set('geminiModel',best);
-  return best;
+  store.set('geminiModels',list);
+  return list;
 }
 async function callGemini(){
   const key=geminiKey();
   if(!key) throw new Error('nokey');
-  const model=await geminiModel(key);
-  const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),40000);
-  try{
-    const r=await fetch(`${GEMINI}/${model}:generateContent`,{method:'POST',signal:ctrl.signal,
-      headers:{'content-type':'application/json','x-goog-api-key':key},
-      body:JSON.stringify({systemInstruction:{parts:[{text:systemPrompt()}]},
-        contents:state.ai.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
-        generationConfig:{responseMimeType:'application/json',temperature:.8}})});
-    if(r.status===404) store.set('geminiModel','');   // model retired: pick again next time
-    if(r.status===400||r.status===403){ const e=await r.text(); throw new Error(/API key|PERMISSION_DENIED/i.test(e)?'gemini badkey':'gemini '+r.status); }
-    if(r.status===429) throw new Error('gemini quota');
-    if(!r.ok) throw new Error('gemini '+r.status);
-    const j=await r.json();
-    return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
-  } finally { clearTimeout(t); }
+  const spent=store.get('geminiSpent',{}), now=Date.now();
+  const models=(await geminiModels(key)).filter(m=>!(spent[m]>now));
+  if(!models.length) throw new Error('gemini quota');
+  for(const model of models.slice(0,6)){
+    const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),40000);
+    try{
+      const r=await fetch(`${GEMINI}/${model}:generateContent`,{method:'POST',signal:ctrl.signal,
+        headers:{'content-type':'application/json','x-goog-api-key':key},
+        body:JSON.stringify({systemInstruction:{parts:[{text:systemPrompt()}]},
+          contents:state.ai.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+          generationConfig:{responseMimeType:'application/json',temperature:.8}})});
+      if(r.status===400||r.status===403){ const e=await r.text(); throw new Error(/API key|PERMISSION_DENIED/i.test(e)?'gemini badkey':'gemini '+r.status); }
+      if(r.status===429||r.status===404){
+        // Out of quota (or retired): skip this model until the daily quota resets.
+        const s=store.get('geminiSpent',{}); s[model]=now+(r.status===404?7*864e5:6*36e5); store.set('geminiSpent',s);
+        continue;
+      }
+      if(!r.ok) throw new Error('gemini '+r.status);
+      const j=await r.json();
+      return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+    } finally { clearTimeout(t); }
+  }
+  throw new Error('gemini quota');
 }
 async function callClaude(){
   const key=claudeKey();
@@ -847,7 +856,7 @@ async function turn(content,myBubble){
       const d=document.createElement('div'); d.className='msg sys';
       d.innerHTML=(err==='nokey'?'هوش مصنوعی هنوز وصل نیست. برای گفتگوی واقعی، کلید رایگان Gemini را در تنظیمات وارد کن. تا آن موقع پاسخ‌های آماده نمایش داده می‌شود.'
         :err==='claude 401'||err==='gemini badkey'?'کلید API معتبر نیست. آن را در تنظیمات بررسی کن.'
-        :err==='gemini quota'?'سهمیهٔ رایگان Gemini فعلاً تمام شده؛ کمی بعد دوباره امتحان کن.'
+        :err==='gemini quota'?'سهمیهٔ رایگان امروزِ همهٔ مدل‌های Gemini تمام شده؛ فردا دوباره پر می‌شود.'
         :'اتصال به هوش مصنوعی برقرار نشد؛ پاسخ‌های آماده نمایش داده می‌شود.')
         +'<br><button class="chip" onclick="go(\'about\');setTimeout(()=>$(\'#keyInput\').scrollIntoView({block:\'center\'}),100)">رفتن به تنظیمات</button>';
       $('#msgs').append(d);
@@ -1081,7 +1090,7 @@ async function saveKey(){
   store.set(PROV[provider()].store,k); $('#keyInput').value=''; aiStatus();
   if(provider()!=='gemini'){ toast('کلید ذخیره شد'); return; }
   // Check the Gemini key right away so a wrong paste is caught here, not in the chat.
-  store.set('geminiModel','');
+  store.set('geminiModels',null); store.set('geminiSpent',{});
   $('#aiStatus').innerHTML='<span class="muted">● در حال بررسی کلید…</span>';
   try{
     const r=await fetch(GEMINI+'/models?pageSize=1',{headers:{'x-goog-api-key':k}});
