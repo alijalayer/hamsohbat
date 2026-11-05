@@ -86,11 +86,10 @@ public class MainActivity extends Activity {
         web.saveState(out);
     }
 
-    // Back closes an open sheet, then steps back through screens, then leaves the app.
+    // Back closes a call or sheet, then steps back through screens, then leaves the app.
     @Override
     public void onBackPressed() {
-        web.evaluateJavascript(
-            "(document.querySelector('.overlay.on')?(closeSOS(),1):(state.history.length>1?(back(),1):0))",
-            v -> { if (!"1".equals(v)) MainActivity.super.onBackPressed(); });
+        web.evaluateJavascript("back()",
+            v -> { if (!"true".equals(v)) MainActivity.super.onBackPressed(); });
     }
 }

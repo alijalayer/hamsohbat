@@ -26,7 +26,7 @@ jobs:
       - name: Copy web app into the APK assets
         run: |
           mkdir -p android/app/src/main/assets
-          cp web/index.html android/app/src/main/assets/index.html
+          cp -r web/. android/app/src/main/assets/
 
       - name: Build APK
         working-directory: android
