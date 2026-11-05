@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2a33">
+<title>هم‌صحبت</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ec; --card:#fffdf9; --ink:#2b3338; --muted:#6f7a80; --line:#e4ddd3;
+  --accent:#5b8a8a; --accent-ink:#fff; --soft:#e7efee; --warm:#c9785b; --sos:#c2513f;
+  --me:#5b8a8a; --peer:#ece6dc;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141c21; --card:#1c262c; --ink:#e6e9ea; --muted:#94a0a6; --line:#2c3a42;
+    --accent:#7fb0ae; --accent-ink:#0f1a1d; --soft:#22343a; --warm:#d99474; --sos:#d9644f;
+    --me:#3f6f6e; --peer:#26333a;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Vazirmatn,Tahoma,sans-serif;font-size:16px;line-height:1.8;-webkit-tap-highlight-color:transparent}
+.app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 16px}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px}
+.logo{font-weight:600;font-size:20px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.logo .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 6px var(--soft)}
+.icon-btn{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;padding:6px}
+main{flex:1;display:flex;flex-direction:column;padding-bottom:96px}
+.screen{display:none;flex-direction:column;gap:14px;animation:fade .5s ease}
+.screen.on{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h1{font-size:26px;font-weight:600;margin:24px 0 0;line-height:1.5}
+h2{font-size:20px;font-weight:600;margin:12px 0 0}
+p{margin:0}
+.muted{color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:600;cursor:pointer;background:var(--accent);color:var(--accent-ink);transition:transform .1s, opacity .2s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:400}
+.btn.sos{background:var(--sos);color:#fff}
+.steps{display:flex;gap:6px;justify-content:center;margin-top:10px}
+.steps i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{aspect-ratio:1;border-radius:16px;border:2px solid transparent;cursor:pointer;overflow:hidden;background:var(--card)}
+.tile.sel{border-color:var(--accent);box-shadow:0 0 0 4px var(--soft)}
+.tile svg{width:100%;height:100%;display:block}
+textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;resize:none}
+textarea:focus,select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+.chip.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.breath{width:150px;height:150px;border-radius:50%;margin:30px auto 10px;background:radial-gradient(circle,var(--accent) 0%,var(--soft) 70%);animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.75);opacity:.6}50%{transform:scale(1);opacity:1}}
+.center{text-align:center}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar b{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .6s}
+.peer-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.peer-row:last-child{border:0}
+.peer-row .av{width:34px;height:34px;border-radius:50%;flex:none}
+.peer-row .grow{flex:1}
+.peer-row.best{font-weight:600}
+/* chat */
+.chat-head{display:flex;align-items:center;gap:10px}
+.chat-head .av{width:42px;height:42px;border-radius:50%;flex:none}
+.chat-tools{display:flex;gap:8px}
+.chat-tools button{flex:1;padding:10px 4px;font-size:13px;white-space:nowrap}
+.msgs{display:flex;flex-direction:column;gap:8px;min-height:260px;max-height:52vh;overflow-y:auto;padding:4px 0}
+.msg{max-width:82%;padding:10px 14px;border-radius:18px;font-size:15px}
+.msg.me{align-self:flex-start;background:var(--me);color:#fff;border-bottom-right-radius:6px}
+.msg.peer{align-self:flex-end;background:var(--peer);border-bottom-left-radius:6px}
+.msg small{display:block;opacity:.7;font-size:12px;margin-top:4px;direction:ltr;text-align:left}
+.msg.sys{align-self:center;background:var(--soft);color:var(--ink);font-size:13px;text-align:center;max-width:95%;border-radius:12px}
+.typing{align-self:flex-end;color:var(--muted);font-size:13px}
+.composer{display:flex;gap:8px}
+.composer input{flex:1;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.composer .btn{width:auto;padding:12px 18px}
+/* call */
+.call{background:#0f171b;color:#e6e9ea;border-radius:20px;padding:24px 16px;text-align:center;display:none}
+.call.on{display:block}
+.call .ring{width:90px;height:90px;border-radius:50%;margin:10px auto;background:var(--accent);animation:breathe 2.4s infinite}
+.call video{width:100%;border-radius:14px;background:#000;max-height:200px;object-fit:cover}
+/* sos */
+.sos-fab{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:20;background:var(--sos);color:#fff;border:0;border-radius:999px;padding:12px 26px;font:inherit;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer}
+.helpline{font-size:13px;color:var(--muted);text-align:center}
+.overlay{position:fixed;inset:0;background:rgba(10,15,18,.55);display:none;align-items:flex-end;justify-content:center;z-index:30}
+.overlay.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:22px 16px 28px;display:flex;flex-direction:column;gap:12px;animation:up .3s ease;max-height:90vh;overflow-y:auto}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;background:var(--card);color:var(--ink);font:inherit;text-align:right;width:100%}
+.opt:hover{border-color:var(--accent)}
+.opt .e{font-size:22px}
+.demo-tag{font-size:11px;background:var(--soft);color:var(--accent);padding:2px 8px;border-radius:999px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600;width:38%;padding-left:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><span class="dot"></span>هم‌صحبت <span class="demo-tag">دمو</span></div>
+    <button class="icon-btn" onclick="go('about')">درباره</button>
+  </header>
+
+  <main>
+    <!-- 1. Welcome -->
+    <section class="screen on" id="welcome">
+      <h1>تو تنها نیستی.</h1>
+      <p>اینجا جایی است برای حرف‌زدن با کسی که شاید حالت را از نزدیک بفهمد. بدون اسم، بدون قضاوت.</p>
+      <div class="card">
+        <p class="muted">🔒 ناشناس و رمزنگاری‌شده · هیچ نهادی به گفتگوها دسترسی ندارد، مگر خودت درخواست کمک کنی.</p>
+      </div>
+      <div class="card">
+        <p class="muted">اگر همین الان در خطر هستی، دکمهٔ قرمز «کمک فوری» پایین صفحه همیشه در دسترس است.</p>
+      </div>
+      <label class="muted">زبان تو</label>
+      <select id="lang">
+        <option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option>
+        <option value="tr">Türkçe</option><option value="es">Español</option><option value="de">Deutsch</option>
+      </select>
+      <button class="btn" onclick="go('t1')">شروع کنیم</button>
+      <p class="helpline">ادامه یعنی پذیرفتن <a href="#" onclick="go('about');return false" style="color:var(--accent)">قوانین ایمنی</a></p>
+    </section>
+
+    <!-- 2. Projective test, step 1 -->
+    <section class="screen" id="t1">
+      <div class="steps"><i class="on"></i><i></i><i></i></div>
+      <h2>کدام تصویر، بیشتر شبیه حال این روزهای توست؟</h2>
+      <p class="muted">جواب درست و غلط ندارد. فقط اولین حسی که داری.</p>
+      <div class="grid" id="imgs"></div>
+      <button class="btn" id="t1next" disabled onclick="go('t2')">ادامه</button>
+    </section>
+
+    <!-- 3. Projective test, step 2 -->
+    <section class="screen" id="t2">
+      <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+      <h2>این جمله را هر طور دوست داری کامل کن:</h2>
+      <p style="font-size:18px">«این روزها بیشتر از هر چیزی…»</p>
+      <textarea id="sentence" rows="4" placeholder="هر چه به ذهنت می‌رسد…"></textarea>
+      <button class="btn" onclick="go('t3')">ادامه</button>
+      <button class="btn ghost" onclick="go('t3')">ترجیح می‌دهم ننویسم</button>
+    </section>
+
+    <!-- 4. Projective test, step 3 -->
+    <section class="screen" id="t3">
+      <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <h2>اگر حالت یک رنگ بود…</h2>
+      <div class="chips" id="colors"></div>
+      <h2>و این یکی فقط برای اینکه آدم مناسب‌تری پیدا کنیم:</h2>
+      <div class="chips" id="ages"></div>
+      <button class="btn" id="t3next" disabled onclick="analyze()">تمام</button>
+    </section>
+
+    <!-- 5. AI analysis -->
+    <section class="screen" id="analyzing">
+      <div class="breath"></div>
+      <p class="center" id="breathText">نفس بکش…</p>
+      <p class="center muted" id="aiText">هوش مصنوعی در حال درک پاسخ‌های توست</p>
+    </section>
+
+    <!-- 5b. Not matched (screened as not in crisis) -->
+    <section class="screen" id="notmatched">
+      <h1>ممنون که آمدی.</h1>
+      <p>این فضا برای کسانی است که در لحظه‌ای خیلی سخت هستند و ما باید جایش را برای آن‌ها نگه داریم.</p>
+      <div class="card"><p class="muted">اگر اشتباه برداشت کرده‌ایم و واقعاً حالت خوب نیست، اشکالی ندارد — همین الان می‌توانی مستقیم با یک مشاور انسانی حرف بزنی.</p></div>
+      <button class="btn" onclick="openSOS(true)">حرف‌زدن با مشاور</button>
+      <button class="btn ghost" onclick="restart()">از اول</button>
+    </section>
+
+    <!-- 6. Matching -->
+    <section class="screen" id="matching">
+      <h2>در حال پیدا کردن همراه…</h2>
+      <div class="card" id="profileCard"></div>
+      <div class="card" id="peerList"></div>
+      <p class="center muted" id="matchText">جستجو میان افراد آنلاین</p>
+    </section>
+
+    <!-- 7. Chat -->
+    <section class="screen" id="chat">
+      <div class="card chat-head">
+        <div class="av" id="peerAv"></div>
+        <div style="flex:1">
+          <div id="peerName" style="font-weight:600"></div>
+          <div class="muted" id="peerMeta"></div>
+        </div>
+        <button class="icon-btn" onclick="endChat()">پایان</button>
+      </div>
+      <div class="chat-tools">
+        <button class="btn ghost" onclick="startCall('voice')">📞 صوتی</button>
+        <button class="btn ghost" onclick="startCall('video')">🎥 تصویری</button>
+        <button class="btn ghost" id="trBtn" onclick="toggleTr()">🌐 ترجمه روشن</button>
+      </div>
+      <div class="call" id="call">
+        <div id="callBody"></div>
+        <p id="callText" style="margin:8px 0"></p>
+        <p style="font-size:12px;opacity:.7">🌐 ترجمهٔ صوتی همزمان فعال است</p>
+        <button class="btn sos" style="margin-top:10px" onclick="hangup()">قطع تماس</button>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer">
+        <input id="inp" placeholder="بنویس…" autocomplete="off" onkeydown="if(event.key==='Enter')send()">
+        <button class="btn" onclick="send()">ارسال</button>
+      </div>
+    </section>
+
+    <!-- 8. After chat -->
+    <section class="screen" id="after">
+      <h1>ممنون که ماندی و حرف زدی.</h1>
+      <p>همین که امشب با کسی حرف زدی، کار کوچکی نیست.</p>
+      <div class="card">
+        <p style="font-weight:600">قبل از رفتن، یک چیز کوچک برای خودت:</p>
+        <p class="muted">یک نفر، یک جا، یا یک کار که می‌تواند تا فردا کمی همراهت باشد را بنویس.</p>
+        <textarea rows="2" placeholder="مثلاً: فردا به خواهرم زنگ می‌زنم"></textarea>
+      </div>
+      <button class="btn" onclick="restart()">گفتگوی دیگر</button>
+      <button class="btn ghost" onclick="openSOS(true)">حرف‌زدن با یک متخصص</button>
+      <label class="muted" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox"> اجازه می‌دهم این گفتگو به‌صورت کاملاً ناشناس برای پژوهش پیشگیری از خودکشی استفاده شود. (اختیاری — پیش‌فرض: خاموش)</label>
+    </section>
+
+    <!-- About / safety / business model -->
+    <section class="screen" id="about">
+      <h2>هم‌صحبت چطور کار می‌کند</h2>
+      <div class="card">
+        <p><b>ایمنی:</b> یک لایهٔ هوش مصنوعی (بدون ذخیرهٔ محتوا) گفتگو را برای نشانه‌های خطر فوری، صحبت از روش یا قرار گذاشتن برای آسیب مشترک بررسی می‌کند و در آن لحظه پیشنهاد کمک می‌دهد. گفتگوها برای هیچ انسانی قابل‌خواندن نیست.</p>
+      </div>
+      <div class="card">
+        <p><b>کمک فوری:</b> فقط وقتی خودت دکمه را بزنی، موقعیتت برای اورژانس محلی فرستاده می‌شود. هیچ کار دیگری بدون اجازهٔ تو انجام نمی‌شود.</p>
+      </div>
+      <h2>مدل درآمد</h2>
+      <p class="muted">اصل اول: کاربرِ در بحران هرگز پول نمی‌دهد، تبلیغ نمی‌بیند و داده‌اش فروخته نمی‌شود.</p>
+      <div class="card">
+        <table>
+          <tr><td>۱. قرارداد سازمانی (B2B)</td><td>اشتراک سالانه برای دانشگاه‌ها، شرکت‌ها، ارتش و نیروهای امدادی برای کارکنان/دانشجویانشان. کاربران همچنان ناشناس می‌مانند.</td></tr>
+          <tr><td>۲. قرارداد دولتی و بیمه</td><td>وزارت بهداشت‌ها و بیمه‌ها برای هر بحرانِ مدیریت‌شده هزینه می‌پردازند؛ برای آن‌ها ارزان‌تر از یک بستری اورژانسی است.</td></tr>
+          <tr><td>۳. شبکهٔ متخصصان</td><td>روانشناسان و مراکز درمانی برای عضویت در شبکهٔ ارجاعِ تأییدشده، اشتراک ماهانه می‌دهند (نه هزینه به ازای هر بیمار).</td></tr>
+          <tr><td>۴. «پرداخت برای دیگری»</td><td>کاربرانی که حالشان بهتر شده یا خانواده‌ها، به‌صورت داوطلبانه هزینهٔ گفتگوی نفر بعدی را می‌دهند.</td></tr>
+          <tr><td>۵. کمک‌های بلاعوض</td><td>گرنت از بنیادهای سلامت روان و سازمان‌های بین‌المللی.</td></tr>
+          <tr><td>۶. پژوهش (فاز بعد)</td><td>فقط داده‌های ناشناس‌شده از کاربرانی که خودشان اجازه داده‌اند، با تأیید کمیتهٔ اخلاق، برای دانشگاه‌ها.</td></tr>
+        </table>
+      </div>
+      <p class="muted">این نسخه یک دموی شبیه‌سازی‌شده است: همراه‌ها، ترجمه، تماس و اعزام اورژانس واقعی نیستند.</p>
+      <button class="btn ghost" onclick="back()">بازگشت</button>
+    </section>
+  </main>
+</div>
+
+<button class="sos-fab" onclick="openSOS()">کمک فوری</button>
+
+<!-- SOS sheet -->
+<div class="overlay" id="sos" onclick="if(event.target===this)closeSOS()">
+  <div class="sheet" id="sosSheet"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = {img:null, color:null, age:null, history:['welcome'], tr:true, peer:null, replyIdx:0};
+
+/* ---------- navigation ---------- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $('#'+id).classList.add('on');
+  if(state.history[state.history.length-1]!==id) state.history.push(id);
+  window.scrollTo(0,0);
+}
+function back(){ state.history.pop(); go(state.history.pop()||'welcome'); }
+function restart(){ Object.assign(state,{img:null,color:null,age:null,replyIdx:0}); state.history=[]; buildTest(); $('#sentence').value=''; $('#msgs').innerHTML=''; go('welcome'); }
+
+/* ---------- projective test ---------- */
+const images = [
+  {k:'storm', svg:'<rect width="100" height="100" fill="#4a5560"/><path d="M0 70 Q25 55 50 70 T100 70 V100 H0Z" fill="#2f3a42"/><path d="M55 15 L45 45 H55 L48 70" stroke="#e8d27a" stroke-width="3" fill="none"/>'},
+  {k:'fog', svg:'<rect width="100" height="100" fill="#cfd4d6"/><rect y="30" width="100" height="10" fill="#e6e9ea" opacity=".8"/><rect y="52" width="100" height="14" fill="#e6e9ea" opacity=".6"/><rect x="44" y="40" width="4" height="40" fill="#9aa3a7"/>'},
+  {k:'sea', svg:'<rect width="100" height="100" fill="#1b2a3a"/><circle cx="72" cy="28" r="9" fill="#d8dde0"/><path d="M0 64 Q25 58 50 64 T100 64 V100 H0Z" fill="#0f1c28"/>'},
+  {k:'road', svg:'<rect width="100" height="100" fill="#d9c6a5"/><path d="M42 100 L49 40 H51 L58 100Z" fill="#7a6a58"/><rect y="40" width="100" height="2" fill="#b9a585"/>'},
+  {k:'light', svg:'<rect width="100" height="100" fill="#20272c"/><circle cx="50" cy="55" r="20" fill="#f0c36a" opacity=".25"/><circle cx="50" cy="55" r="6" fill="#f0c36a"/>'},
+  {k:'room', svg:'<rect width="100" height="100" fill="#8d9a94"/><rect x="30" y="25" width="40" height="34" fill="#c9d4cf"/><rect x="49" y="25" width="2" height="34" fill="#8d9a94"/><rect x="20" y="78" width="60" height="4" fill="#5d6964"/>'}
+];
+const colors = ['خاکستری','آبی تیره','سیاه','بی‌رنگ','قرمز','زرد کم‌رنگ'];
+const ages = ['۱۸–۲۴','۲۵–۳۴','۳۵–۴۹','۵۰–۶۴','۶۵+'];
+function buildTest(){
+  $('#imgs').innerHTML = images.map((im,i)=>`<div class="tile" data-i="${i}"><svg viewBox="0 0 100 100">${im.svg}</svg></div>`).join('');
+  $('#imgs').querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
+    $('#imgs').querySelectorAll('.tile').forEach(x=>x.classList.remove('sel'));
+    t.classList.add('sel'); state.img=images[t.dataset.i].k; $('#t1next').disabled=false;
+  });
+  $('#t1next').disabled=true;
+  chips('#colors', colors, v=>state.color=v);
+  chips('#ages', ages, v=>state.age=v);
+}
+function chips(sel, list, set){
+  const el=$(sel); el.innerHTML=list.map(v=>`<button class="chip">${v}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+    el.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel'));
+    c.classList.add('sel'); set(c.textContent); $('#t3next').disabled=!(state.color&&state.age);
+  });
+}
+
+/* ---------- simulated AI screening ---------- */
+const types = {
+  storm:'طوفانی — درد پرشدت و خشم فروخورده',
+  fog:'مه‌آلود — بی‌حسی و گم‌گشتگی',
+  sea:'شب دریا — تنهایی عمیق',
+  road:'جادهٔ خالی — بی‌هدفی و خستگی',
+  light:'نور کوچک — ناامید ولی هنوز در جستجو',
+  room:'اتاق بسته — انزوا و دلتنگی'
+};
+function analyze(){
+  go('analyzing');
+  const lines=['نفس بکش…','و آرام بیرون بده…','هنوز اینجاییم…'];
+  let i=0; const t=setInterval(()=>{$('#breathText').textContent=lines[++i%3]},1300);
+  setTimeout(()=>{
+    clearInterval(t);
+    const txt=$('#sentence').value.trim();
+    // Demo heuristic standing in for the fine-tuned model: obvious trolling is screened out.
+    const troll=/(هه+|خخخ|lol|haha|شوخی|مسخره)/i.test(txt);
+    if(troll) return go('notmatched');
+    state.profile={type:types[state.img], age:state.age, serious: 82+Math.floor(Math.random()*15)};
+    match();
+  },4000);
+}
+
+/* ---------- matching ---------- */
+const peers = [
+  {name:'Lena', city:'Berlin', lang:'Deutsch', code:'de', age:'۲۵–۳۴', type:'sea', c:'#7a8fb0'},
+  {name:'Mateo', city:'Bogotá', lang:'Español', code:'es', age:'۱۸–۲۴', type:'road', c:'#b08f6e'},
+  {name:'Sam', city:'Toronto', lang:'English', code:'en', age:'۲۵–۳۴', type:'fog', c:'#8fa98a'},
+  {name:'Aylin', city:'Izmir', lang:'Türkçe', code:'tr', age:'۳۵–۴۹', type:'room', c:'#a68aa8'},
+  {name:'Noor', city:'Amman', lang:'العربية', code:'ar', age:'۵۰–۶۴', type:'light', c:'#c4a46a'}
+];
+function score(p){
+  const ai=ages.indexOf(state.age), pi=ages.indexOf(p.age), gap=Math.abs(ai-pi);
+  const ageScore = gap===0?50:gap===1?32:gap===2?8:0;   // big age gaps are effectively excluded
+  const moodScore = p.type===state.img?45:20+((p.name.length*7)%15);
+  return Math.min(99, ageScore+moodScore);
+}
+function match(){
+  go('matching');
+  $('#profileCard').innerHTML=`<p class="muted">برداشت هوش مصنوعی از تو</p>
+    <p>${state.profile.type}</p><p class="muted">ردهٔ سنی: ${state.profile.age} · اطمینان از جدیت وضعیت: ${state.profile.serious}٪</p>`;
+  const ranked=peers.map(p=>({...p,s:score(p)})).sort((a,b)=>b.s-a.s);
+  $('#peerList').innerHTML='<p class="muted">آنلاین در همین لحظه</p>'+ranked.map((p,i)=>`
+    <div class="peer-row" id="pr${i}"><div class="av" style="background:${p.c}"></div>
+    <div class="grow">همراه ناشناس · ${p.lang}<div class="bar"><b style="width:0"></b></div></div><span>${toFa(p.s)}٪</span></div>`).join('');
+  ranked.forEach((p,i)=>setTimeout(()=>$('#pr'+i+' b').style.width=p.s+'%',300+i*250));
+  const best=ranked[0];
+  setTimeout(()=>{
+    $('#pr0').classList.add('best');
+    $('#matchText').textContent = best.s>=95 ? 'تطابق کامل پیدا شد' : `تطابق کامل آنلاین نبود — نزدیک‌ترین همراه (${toFa(best.s)}٪) انتخاب شد`;
+  },1800);
+  setTimeout(()=>openChat(best),3600);
+}
+function toFa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d])}
+
+/* ---------- chat ---------- */
+const script = {
+  de:["Hallo… ich weiß nicht genau, was ich sagen soll. Ich bin einfach froh, dass jemand da ist.","Ich verstehe das. Bei mir ist es nachts am schlimmsten.","Darf ich fragen, was heute passiert ist?","Danke, dass du mir das erzählst. Ich fühle mich gerade weniger allein.","Bleibst du noch ein bisschen? Ich glaube, das Reden hilft mir."],
+  es:["Hola… no sé muy bien qué decir. Me alegra que alguien esté aquí.","Te entiendo. Para mí las noches son lo peor.","¿Puedo preguntarte qué pasó hoy?","Gracias por contármelo. Ahora me siento menos solo.","¿Te quedas un rato más? Creo que hablar me ayuda."],
+  en:["Hi… I'm not sure what to say. I'm just glad someone's here.","I get that. Nights are the worst for me too.","Can I ask what happened today?","Thank you for telling me. I feel a little less alone right now.","Will you stay a bit longer? I think talking is helping."],
+  tr:["Merhaba… ne diyeceğimi bilmiyorum. Birinin burada olmasına sevindim.","Anlıyorum. Benim için de en kötüsü geceler.","Bugün ne oldu, sorabilir miyim?","Anlattığın için teşekkürler. Şu an daha az yalnız hissediyorum.","Biraz daha kalır mısın? Konuşmak iyi geliyor sanırım."],
+  ar:["مرحباً… لا أعرف ماذا أقول. أنا سعيدة فقط لأن أحداً هنا.","أفهمك. الليالي هي الأسوأ بالنسبة لي أيضاً.","هل يمكنني أن أسأل ماذا حدث اليوم؟","شكراً لأنك أخبرتني. أشعر الآن بوحدة أقل.","هل تبقى قليلاً بعد؟ أظن أن الكلام يساعدني."]
+};
+const faScript=["سلام… نمی‌دانم دقیقاً چه بگویم. فقط خوشحالم که کسی اینجاست.","می‌فهمم. برای من هم شب‌ها از همه بدتر است.","می‌توانم بپرسم امروز چه اتفاقی افتاد؟","ممنون که برایم گفتی. الان کمتر احساس تنهایی می‌کنم.","کمی دیگر می‌مانی؟ فکر کنم حرف‌زدن کمکم می‌کند."];
+const myTr={de:'→ übersetzt ins Deutsche',es:'→ traducido al español',en:'→ translated to English',tr:'→ Türkçeye çevrildi',ar:'→ تُرجمت إلى العربية'};
+
+function openChat(p){
+  state.peer=p; state.replyIdx=0;
+  go('chat');
+  $('#peerAv').style.background=p.c;
+  $('#peerName').textContent='همراه ناشناس';
+  $('#peerMeta').textContent=`${p.lang} · تطابق ${toFa(p.s)}٪ · ترجمهٔ زنده`;
+  sys('به هم وصل شدید. هر دو ناشناس هستید. هر وقت خواستی می‌توانی گفتگو را تمام کنی.');
+  peerSay(1200);
+}
+function sys(t){ const d=document.createElement('div'); d.className='msg sys'; d.textContent=t; $('#msgs').append(d); scroll(); }
+function scroll(){ const m=$('#msgs'); m.scrollTop=m.scrollHeight; }
+function peerSay(delay){
+  const code=state.peer.code, i=state.replyIdx;
+  if(i>=script[code].length) return;
+  state.replyIdx++;
+  const typing=document.createElement('div'); typing.className='typing'; typing.textContent='در حال نوشتن…';
+  setTimeout(()=>{ $('#msgs').append(typing); scroll(); },delay/3);
+  setTimeout(()=>{
+    typing.remove();
+    const d=document.createElement('div'); d.className='msg peer';
+    d.dataset.fa=faScript[i]; d.dataset.orig=script[code][i];
+    renderPeer(d); $('#msgs').append(d); scroll();
+  },delay);
+}
+function renderPeer(d){
+  d.innerHTML = state.tr ? `${d.dataset.fa}<small>${d.dataset.orig}</small>` : d.dataset.orig;
+}
+function toggleTr(){
+  state.tr=!state.tr; $('#trBtn').textContent='🌐 ترجمه '+(state.tr?'روشن':'خاموش');
+  document.querySelectorAll('.msg.peer').forEach(renderPeer);
+}
+// Words that suggest method talk, a pact, or immediate danger. The real system uses a classifier, not a list.
+const riskRe=/(قرص|طناب|پل|رگ|سم|تیغ|اسلحه|با هم تمومش|با هم بریم|امشب تموم|همین الان|خداحافظ)/;
+function send(){
+  const v=$('#inp').value.trim(); if(!v) return;
+  const d=document.createElement('div'); d.className='msg me';
+  d.innerHTML=`${esc(v)}<small>${myTr[state.peer.code]}</small>`;
+  $('#msgs').append(d); $('#inp').value=''; scroll();
+  if(riskRe.test(v)) return guardian();
+  peerSay(1800+Math.random()*1200);
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function guardian(){
+  setTimeout(()=>{
+    const d=document.createElement('div'); d.className='msg sys';
+    d.innerHTML=`🤍 به نظر می‌رسد همین الان خیلی سخت است. لازم نیست تنها با آن بمانی.<br>
+      <button class="chip" style="margin-top:8px" onclick="openSOS(true)">حرف‌زدن با یک مشاور</button>
+      <button class="chip" style="margin-top:8px" onclick="this.parentNode.remove();peerSay(1500)">ادامهٔ گفتگو</button>`;
+    $('#msgs').append(d); scroll();
+  },700);
+}
+function endChat(){ hangup(); go('after'); }
+
+/* ---------- calls (consent from both sides) ---------- */
+let stream=null;
+function startCall(kind){
+  sheet(`<h2>${kind==='video'?'تماس تصویری':'تماس صوتی'}</h2>
+    <p class="muted">${kind==='video'?'دوربین فقط وقتی روشن می‌شود که هر دو نفر موافقت کنید. می‌توانی هر لحظه آن را خاموش کنی.':'فقط صدا. هویت و شماره‌ات نمایش داده نمی‌شود.'}</p>
+    <button class="btn" onclick="requestCall('${kind}')">درخواست از همراه</button>
+    <button class="btn ghost" onclick="closeSOS()">انصراف</button>`);
+}
+function requestCall(kind){
+  sheet(`<div class="breath" style="width:90px;height:90px;margin:10px auto"></div><p class="center">منتظر موافقت همراه…</p>`);
+  setTimeout(async()=>{
+    closeSOS();
+    $('#call').classList.add('on');
+    $('#callText').textContent = kind==='video' ? 'همراه موافقت کرد. دوربین تو:' : 'در حال گفتگو · ۰۰:۰۰';
+    if(kind==='video'){
+      $('#callBody').innerHTML='<video id="vid" autoplay playsinline muted></video>';
+      try{ stream=await navigator.mediaDevices.getUserMedia({video:true}); $('#vid').srcObject=stream; }
+      catch(e){ $('#callBody').innerHTML='<div class="ring"></div>'; $('#callText').textContent='دوربین در دسترس نیست — تماس صوتی ادامه دارد'; }
+    } else {
+      $('#callBody').innerHTML='<div class="ring"></div>';
+      let s=0; state.timer=setInterval(()=>{s++; $('#callText').textContent='در حال گفتگو · '+toFa(String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'))},1000);
+    }
+  },2200);
+}
+function hangup(){
+  $('#call').classList.remove('on'); clearInterval(state.timer);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+}
+
+/* ---------- SOS protocol ---------- */
+function sheet(html){ $('#sosSheet').innerHTML=html; $('#sos').classList.add('on'); }
+function closeSOS(){ $('#sos').classList.remove('on'); }
+function openSOS(skipDispatch){
+  if(skipDispatch) return chooseExpert(false);
+  sheet(`<h2>درخواست کمک فوری</h2>
+    <p>با تأیید، موقعیت مکانی‌ات برای نزدیک‌ترین اورژانس فرستاده می‌شود تا کسی بیاید.</p>
+    <p class="muted">این تنها لحظه‌ای است که اطلاعاتی از تو بیرون می‌رود — و فقط چون خودت خواستی.</p>
+    <button class="btn sos" onclick="dispatchHelp()">بله، کمک بفرستید</button>
+    <button class="btn ghost" onclick="chooseExpert(false)">فقط می‌خواهم با کسی حرف بزنم</button>
+    <button class="btn ghost" onclick="closeSOS()">بستن</button>
+    <p class="helpline">ایران: اورژانس ۱۱۵ · صدای مشاور ۱۴۸۰ · اورژانس اجتماعی ۱۲۳<br>بین‌المللی: findahelpline.com</p>`);
+}
+function dispatchHelp(){
+  sheet(`<div class="breath" style="width:90px;height:90px;margin:10px auto"></div><p class="center" id="gpsTxt">در حال دریافت موقعیت…</p>`);
+  const done=(txt)=>{
+    $('#gpsTxt').innerHTML=txt;
+    setTimeout(()=>chooseExpert(true),1600);
+  };
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      p=>done(`📍 موقعیت ثبت شد (${p.coords.latitude.toFixed(3)}, ${p.coords.longitude.toFixed(3)})<br>✅ برای اورژانس فرستاده شد <span class="demo-tag">شبیه‌سازی</span>`),
+      ()=>done('📍 موقعیت دقیق در دسترس نبود — از موقعیت تقریبی استفاده شد<br>✅ برای اورژانس فرستاده شد <span class="demo-tag">شبیه‌سازی</span>'),
+      {timeout:6000});
+  } else done('✅ درخواست برای اورژانس فرستاده شد <span class="demo-tag">شبیه‌سازی</span>');
+}
+function chooseExpert(dispatched){
+  sheet(`<h2>${dispatched?'کمک در راه است.':'با چه کسی حرف بزنیم؟'}</h2>
+    <p class="muted">${dispatched?'می‌خواهی تا رسیدن کمک، با کسی حرف بزنی؟ کاملاً اختیاری است.':'انتخاب با توست.'}</p>
+    ${[['🎧','اپراتور خط بحران','همین الان، بدون انتظار'],['💬','مشاور','گوش‌دادن و همراهی'],['🧠','روانشناس','حمایت تخصصی'],['⚕️','روانپزشک','وقتی دارو یا ارزیابی پزشکی لازم است']]
+      .map(([e,t,d])=>`<button class="opt" onclick="connectExpert('${t}')"><span class="e">${e}</span><span><b>${t}</b><br><span class="muted">${d}</span></span></button>`).join('')}
+    <button class="btn" onclick="connectExpert('AI')">✨ خودت بهترین گزینه را انتخاب کن</button>
+    <button class="btn ghost" onclick="closeSOS()">${dispatched?'نه، منتظر می‌مانم':'بستن'}</button>`);
+}
+function connectExpert(t){
+  const pick = t==='AI' ? 'اپراتور خط بحران' : t;
+  sheet(`<div class="breath" style="width:90px;height:90px;margin:10px auto"></div>
+    <p class="center">${t==='AI'?'هوش مصنوعی با توجه به وضعیت تو، <b>'+pick+'</b> را انتخاب کرد.<br>':''}در حال وصل‌شدن به ${pick}…</p>
+    <p class="center muted">در نسخهٔ واقعی، اینجا تماس مستقیم برقرار می‌شود. <span class="demo-tag">دمو</span></p>
+    <button class="btn ghost" onclick="closeSOS()">بستن</button>`);
+}
+
+buildTest();
+</script>
+</body>
+</html>
