@@ -438,8 +438,11 @@ input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
       <div class="card" id="revenue"></div>
       <h3>تنظیمات هوش مصنوعی</h3>
       <div class="card" style="display:flex;flex-direction:column;gap:10px">
-        <p class="small muted">برای گفتگوی واقعی با هوش مصنوعی، کلید API خودت از Claude (از console.anthropic.com) را وارد کن. کلید فقط روی همین گوشی ذخیره می‌شود و مستقیم به Anthropic فرستاده می‌شود.</p>
-        <input id="keyInput" type="password" placeholder="sk-ant-…" dir="ltr" autocomplete="off">
+        <div class="seg" id="provSeg" style="grid-template-columns:1fr 1fr">
+          <button data-p="gemini">Gemini · رایگان</button><button data-p="claude">Claude</button>
+        </div>
+        <p class="small muted" id="provHelp"></p>
+        <input id="keyInput" type="password" dir="ltr" autocomplete="off">
         <div class="row"><button class="btn teal" onclick="saveKey()">ذخیره</button><button class="btn ghost" onclick="clearKey()">حذف کلید</button></div>
         <p class="small" id="aiStatus"></p>
       </div>
@@ -719,7 +722,50 @@ Respond with JSON only, no other text:
 risk = "imminent" if the user expresses intent, a plan, means or a timeline to end their life; "elevated" for hopelessness or passive wishes to die; otherwise "none".`;
 }
 const claudeKey=()=>store.get('claudeKey','');
+const geminiKey=()=>store.get('geminiKey','');
+const provider=()=>store.get('aiProvider','gemini');
 async function callAI(){
+  return provider()==='claude' ? callClaude() : callGemini();
+}
+const GEMINI='https://generativelanguage.googleapis.com/v1beta';
+// Picks the newest stable Flash model this key can use, so no model name is hard-coded.
+async function geminiModel(key){
+  const cached=store.get('geminiModel','');
+  if(cached) return cached;
+  let best='models/gemini-2.5-flash';
+  try{
+    const r=await fetch(GEMINI+'/models?pageSize=200',{headers:{'x-goog-api-key':key}});
+    if(r.status===400||r.status===403) throw new Error('gemini badkey');
+    const j=await r.json();
+    const ok=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')
+      && /^models\/gemini-\d+(\.\d+)?-flash$/.test(m.name));
+    const ver=m=>parseFloat(m.name.match(/gemini-([\d.]+)/)[1]);
+    ok.sort((a,b)=>ver(b)-ver(a));
+    if(ok[0]) best=ok[0].name;
+  }catch(e){ if(e.message==='gemini badkey') throw e; }
+  store.set('geminiModel',best);
+  return best;
+}
+async function callGemini(){
+  const key=geminiKey();
+  if(!key) throw new Error('nokey');
+  const model=await geminiModel(key);
+  const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),40000);
+  try{
+    const r=await fetch(`${GEMINI}/${model}:generateContent`,{method:'POST',signal:ctrl.signal,
+      headers:{'content-type':'application/json','x-goog-api-key':key},
+      body:JSON.stringify({systemInstruction:{parts:[{text:systemPrompt()}]},
+        contents:state.ai.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+        generationConfig:{responseMimeType:'application/json',temperature:.8}})});
+    if(r.status===404) store.set('geminiModel','');   // model retired: pick again next time
+    if(r.status===400||r.status===403){ const e=await r.text(); throw new Error(/API key|PERMISSION_DENIED/i.test(e)?'gemini badkey':'gemini '+r.status); }
+    if(r.status===429) throw new Error('gemini quota');
+    if(!r.ok) throw new Error('gemini '+r.status);
+    const j=await r.json();
+    return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+  } finally { clearTimeout(t); }
+}
+async function callClaude(){
   const key=claudeKey();
   if(!key) throw new Error('nokey');
   const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),40000);
@@ -766,8 +812,10 @@ async function turn(content,myBubble){
     o={reply:OFFLINE.orig[i],reply_user_lang:OFFLINE.fa[i],risk:'none'};
     if(state.offlineIdx===1){
       const d=document.createElement('div'); d.className='msg sys';
-      d.innerHTML=(err==='nokey'?'هوش مصنوعی هنوز وصل نیست. برای گفتگوی واقعی، کلید API از Claude را در تنظیمات وارد کن. تا آن موقع پاسخ‌های آماده نمایش داده می‌شود.'
-        :err==='claude 401'?'کلید API معتبر نیست. آن را در تنظیمات بررسی کن.':'اتصال به هوش مصنوعی برقرار نشد؛ پاسخ‌های آماده نمایش داده می‌شود.')
+      d.innerHTML=(err==='nokey'?'هوش مصنوعی هنوز وصل نیست. برای گفتگوی واقعی، کلید رایگان Gemini را در تنظیمات وارد کن. تا آن موقع پاسخ‌های آماده نمایش داده می‌شود.'
+        :err==='claude 401'||err==='gemini badkey'?'کلید API معتبر نیست. آن را در تنظیمات بررسی کن.'
+        :err==='gemini quota'?'سهمیهٔ رایگان Gemini فعلاً تمام شده؛ کمی بعد دوباره امتحان کن.'
+        :'اتصال به هوش مصنوعی برقرار نشد؛ پاسخ‌های آماده نمایش داده می‌شود.')
         +'<br><button class="chip" onclick="go(\'about\');setTimeout(()=>$(\'#keyInput\').scrollIntoView({block:\'center\'}),100)">رفتن به تنظیمات</button>';
       $('#msgs').append(d);
     }
@@ -968,11 +1016,24 @@ const REVENUE=[
 ];
 function renderAbout(){
   $('#revenue').innerHTML=REVENUE.map(([i,t,d,c])=>`<div class="rev"><div class="ri" style="--c:${c}">${ic(i)}</div><div><h3>${t}</h3><p class="muted small">${d}</p></div></div>`).join('');
+  $('#provSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{ store.set('aiProvider',b.dataset.p); aiStatus(); });
   aiStatus();
 }
-function aiStatus(){ $('#aiStatus').innerHTML=claudeKey()?'<span style="color:var(--teal)">● متصل به Claude (کلید شخصی)</span>':'<span style="color:var(--amber)">● هنوز کلیدی وارد نشده؛ گفتگو با پاسخ‌های آماده کار می‌کند</span>'; }
-function saveKey(){ const k=$('#keyInput').value.trim(); if(!k) return; store.set('claudeKey',k); $('#keyInput').value=''; aiStatus(); toast('کلید ذخیره شد'); }
-function clearKey(){ store.set('claudeKey',''); aiStatus(); toast('کلید حذف شد'); }
+const PROV={
+  gemini:{name:'Gemini',key:geminiKey,store:'geminiKey',ph:'AIza…',
+    help:'کلید رایگان را از aistudio.google.com ← Get API key بگیر (حساب گوگل کافی است، پرداخت لازم نیست). توجه: در نسخهٔ رایگان، گوگل ممکن است از گفتگوها برای بهبود محصولاتش استفاده کند.'},
+  claude:{name:'Claude',key:claudeKey,store:'claudeKey',ph:'sk-ant-…',
+    help:'کلید API از console.anthropic.com (پولی، کیفیت بالاتر).'}
+};
+function aiStatus(){
+  const p=PROV[provider()];
+  $('#provSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.p===provider()));
+  $('#provHelp').textContent=p.help+' کلید فقط روی همین گوشی ذخیره می‌شود.';
+  $('#keyInput').placeholder=p.ph;
+  $('#aiStatus').innerHTML=p.key()?`<span style="color:var(--teal)">● کلید ${p.name} ذخیره شده</span>`:'<span style="color:var(--amber)">● هنوز کلیدی وارد نشده؛ گفتگو با پاسخ‌های آماده کار می‌کند</span>';
+}
+function saveKey(){ const k=$('#keyInput').value.trim(); if(!k) return; store.set(PROV[provider()].store,k); if(provider()==='gemini') store.set('geminiModel',''); $('#keyInput').value=''; aiStatus(); toast('کلید ذخیره شد'); }
+function clearKey(){ store.set(PROV[provider()].store,''); aiStatus(); toast('کلید حذف شد'); }
 
 /* ---------- start ---------- */
 hydrateIcons(); renderHome(); renderSounds(); renderJournal(); renderAbout();
