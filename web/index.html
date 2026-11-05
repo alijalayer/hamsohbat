@@ -1032,23 +1032,6 @@ function audio(){
   rev.buffer=ir; sWet=sCtx.createGain(); sWet.gain.value=.55; sWet.connect(rev).connect(sOut);
   return sCtx;
 }
-function noise(type,sec=6){
-  const ctx=audio(), b=ctx.createBuffer(2,ctx.sampleRate*sec,ctx.sampleRate);
-  for(let ch=0;ch<2;ch++){
-    const d=b.getChannelData(ch); let b0=0,b1=0,b2=0,last=0;
-    for(let i=0;i<d.length;i++){
-      const w=Math.random()*2-1;
-      if(type==='brown'){ last=(last+.02*w)/1.02; d[i]=last*3.2; }
-      else { b0=.99765*b0+w*.099046; b1=.963*b1+w*.2965164; b2=.57*b2+w*1.0526913; d[i]=(b0+b1+b2+w*.1848)*.11; }   // pink
-    }
-  }
-  return b;
-}
-function loopSrc(buf){ const s=audio().createBufferSource(); s.buffer=buf; s.loop=true; return s; }
-function lfo(rate,depth,target,base){
-  const ctx=audio(), o=ctx.createOscillator(), g=ctx.createGain();
-  o.frequency.value=rate; g.gain.value=depth; target.value=base; o.connect(g).connect(target); o.start(); return o;
-}
 // A soft tone that rises and falls: used by the pad, piano and bowl.
 function tone(freq,{at=0,attack=.01,hold=0,decay=2,gain=.1,type='sine',wet=.6,dest}={}){
   const ctx=audio(), t=ctx.currentTime+at, o=ctx.createOscillator(), g=ctx.createGain();
@@ -1061,40 +1044,27 @@ function tone(freq,{at=0,attack=.01,hold=0,decay=2,gain=.1,type='sine',wet=.6,de
 const hz=m=>440*Math.pow(2,(m-69)/12);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 
+// Rain, sea and wind are real recordings (public domain / CC0, from Wikimedia Commons),
+// prepared as seamless loops so the native loop has no audible seam.
+const REC={rain:['sounds/rain.opus',.9],sea:['sounds/sea.opus',1],wind:['sounds/wind.opus',.45]};
+function startRecording(k){
+  const [src,level]=REC[k], a=new Audio(src); let fade=0, timer=0;
+  a.loop=true; a.volume=0;
+  const apply=()=>{ a.volume=Math.min(1,fade*level*$('#vol').value/100); };
+  const fadeTo=(to,ms,done)=>{ clearInterval(timer); const from=fade, t0=Date.now();
+    timer=setInterval(()=>{ const p=Math.min(1,(Date.now()-t0)/ms); fade=from+(to-from)*p; apply(); if(p>=1){ clearInterval(timer); done&&done(); } },50); };
+  a.play().catch(()=>toast('پخش صدا ممکن نشد'));
+  fadeTo(1,3000);
+  return {stop(){ fadeTo(0,1500,()=>{ a.pause(); a.removeAttribute('src'); a.load(); }); }, setVol:apply};
+}
 // Measured so every sound plays at about the same loudness.
-const LEVEL={rain:1,sea:.85,wind:3.5,pad:1.6,piano:3,bowl:4};
+const LEVEL={pad:1.6,piano:3,bowl:4};
 function startVoice(k){
+  if(REC[k]) return startRecording(k);
   const ctx=audio(), out=ctx.createGain(), timers=[], nodes=[];
   out.gain.setValueAtTime(0,ctx.currentTime); out.gain.linearRampToValueAtTime(LEVEL[k],ctx.currentTime+3);
   out.connect(sOut);
   const every=(fn,ms)=>{ const run=()=>{ fn(); timers.push(setTimeout(run,typeof ms==='function'?ms():ms)); }; run(); };
-  if(k==='rain'){
-    const s=loopSrc(noise('pink')), lp=ctx.createBiquadFilter(), hp=ctx.createBiquadFilter(), g=ctx.createGain();
-    lp.type='lowpass'; lp.frequency.value=2200; hp.type='highpass'; hp.frequency.value=300; g.gain.value=.9;
-    s.connect(hp).connect(lp).connect(g).connect(out); s.start(); nodes.push(s);
-    const w=ctx.createGain(); w.gain.value=.25; g.connect(w).connect(sWet);
-    // Distant soft drops.
-    const drop=noise('pink',1);
-    every(()=>{ const d=ctx.createBufferSource(), f=ctx.createBiquadFilter(), e=ctx.createGain(), t=ctx.currentTime;
-      d.buffer=drop; f.type='bandpass'; f.frequency.value=1500+Math.random()*2500; f.Q.value=6;
-      e.gain.setValueAtTime(.0001,t); e.gain.linearRampToValueAtTime(.25+Math.random()*.25,t+.004); e.gain.exponentialRampToValueAtTime(.0001,t+.06);
-      d.connect(f).connect(e); e.connect(out); const ww=ctx.createGain(); ww.gain.value=.8; e.connect(ww).connect(sWet);
-      d.start(t,Math.random()*.8,.08); }, ()=>40+Math.random()*160);
-  }
-  if(k==='sea'){
-    [[.075,0],[.052,1.7]].forEach(([rate,phase],i)=>{
-      const s=loopSrc(noise('brown')), lp=ctx.createBiquadFilter(), g=ctx.createGain();
-      lp.type='lowpass'; s.connect(lp).connect(g).connect(out);
-      const w=ctx.createGain(); w.gain.value=.4; g.connect(w).connect(sWet);
-      s.start(0,phase); nodes.push(s,lfo(rate,450,lp.frequency,650),lfo(rate,.45,g.gain,.5-i*.15));
-    });
-  }
-  if(k==='wind'){
-    const s=loopSrc(noise('pink')), bp=ctx.createBiquadFilter(), g=ctx.createGain();
-    bp.type='bandpass'; bp.Q.value=1.4; s.connect(bp).connect(g).connect(out);
-    const w=ctx.createGain(); w.gain.value=.5; g.connect(w).connect(sWet);
-    s.start(); nodes.push(s,lfo(.045,350,bp.frequency,650),lfo(.031,.35,g.gain,.55));
-  }
   if(k==='pad'){
     // Am9 – Fmaj7 – Cadd9 – G6, eight seconds each.
     const CH=[[45,57,60,64,71],[41,57,60,64,69],[48,55,62,64,67],[43,55,59,62,64]];
@@ -1120,14 +1090,14 @@ function startVoice(k){
 function stopSound(){ if(sVoice){ sVoice.stop(); sVoice=null; } sCur=null; }
 function playSound(k){
   if(sCur===k){ stopSound(); renderSounds(); return; }
-  stopSound(); audio().resume();
+  stopSound(); if(!REC[k]) audio().resume();
   sVoice=startVoice(k); sCur=k; renderSounds();
 }
 function renderSounds(){
   $('#soundList').innerHTML=SOUNDS.map(([k,n,i,c])=>`<button class="tool" data-k="${k}" style="${sCur===k?'border-color:'+c:''}"><div class="ti" style="--c:${c}">${ic(i)}</div><div><h3>${n}</h3><p class="muted small">${sCur===k?'در حال پخش · لمس برای توقف':'لمس برای پخش'}</p></div></button>`).join('');
   $('#soundList').querySelectorAll('.tool').forEach(b=>b.onclick=()=>playSound(b.dataset.k));
 }
-function setVol(v){ if(sOut) sOut.gain.setTargetAtTime(v/100,sCtx.currentTime,.1); }
+function setVol(v){ if(sOut) sOut.gain.setTargetAtTime(v/100,sCtx.currentTime,.1); if(sVoice&&sVoice.setVol) sVoice.setVol(); }
 
 /* ---------- journal & after-chat ---------- */
 let jEdit=-1;

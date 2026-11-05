@@ -76,3 +76,13 @@ android/                پوستهٔ اندروید (WebView) که web/index.htm
 ```
 
 اجرای محلی دمو: فایل `web/index.html` را در مرورگر باز کنید.
+
+## منبع صداها
+
+صداهای باران، نسیم و موج ضبط‌های واقعی از Wikimedia Commons هستند، کوتاه و به حلقه‌های بی‌درز تبدیل شده‌اند:
+
+- باران: [Rain against the window.ogg](https://commons.wikimedia.org/wiki/File:Rain_against_the_window.ogg) (مالکیت عمومی)
+- نسیم: [Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (مالکیت عمومی)
+- موج: [Ocean Waves on a Tropical Beach.ogg](https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg) (CC0)
+
+موسیقی آرام، پیانو و کاسهٔ تبتی همان‌جا روی گوشی ساخته می‌شوند.
